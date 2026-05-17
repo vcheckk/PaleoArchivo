@@ -29,8 +29,8 @@ const getRivalText = (dino, rival, language) => {
 };
 
 const RIVAL_STYLE = {
-  presa:      { border: "border-red-500/40",   bg: "bg-red-500/5",   text: "text-red-400",   label: { es: "PRESA", en: "PREY", fr: "PROIE", it: "PREDA" } },
-  depredador: { border: "border-blue-500/40",  bg: "bg-blue-500/5",  text: "text-blue-400",  label: { es: "DEPREDADOR", en: "PREDATOR", fr: "PRÉDATEUR", it: "PREDATORE" } },
+  presa:      { border: "border-blue-500/40",   bg: "bg-blue-500/5",   text: "text-blue-400",   label: { es: "PRESA", en: "PREY", fr: "PROIE", it: "PREDA" } },
+  depredador: { border: "border-red-500/40",  bg: "bg-red-500/5",  text: "text-red-400",  label: { es: "DEPREDADOR", en: "PREDATOR", fr: "PRÉDATEUR", it: "PREDATORE" } },
   competidor: { border: "border-amber-500/40", bg: "bg-amber-500/5", text: "text-amber-400", label: { es: "RIVAL", en: "RIVAL", fr: "RIVAL", it: "RIVALE" } },
 };
 

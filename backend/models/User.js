@@ -43,6 +43,14 @@ const userSchema = new mongoose.Schema({
       updatedAt: { type: Date, default: Date.now }
     }
   ],
+  history: [
+    {
+      _id: false,
+      animalId: { type: String, required: true },
+      animalNombre: { type: String, default: "" },
+      visitedAt: { type: Date, default: Date.now }
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now

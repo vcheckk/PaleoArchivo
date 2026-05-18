@@ -11,14 +11,12 @@ import { allAnimals } from "../data/allData";
 import { getHallazgosForAnimals } from "../data/paleomapCoords";
 
 // ── Datos de todos los animales con coordenadas ───────────────────────────────
-// Agrupados por era para poder filtrar
 const ERA_CONFIG = {
   Paleozoico: { color: "#6aafc5", bg: "rgba(106,175,197,0.15)", border: "rgba(106,175,197,0.5)", label: "Paleozoico", ma: "538–252 Ma" },
   Mesozoico:  { color: "#6abf6a", bg: "rgba(106,191,106,0.15)", border: "rgba(106,191,106,0.5)", label: "Mesozoico",  ma: "252–66 Ma"  },
   Cenozoico:  { color: "#cf9a5a", bg: "rgba(207,154,90,0.15)",  border: "rgba(207,154,90,0.5)",  label: "Cenozoico",  ma: "66 Ma–hoy" },
 };
 
-// Mapeo de era del catálogo → era del filtro
 const ERA_MAP = {
   "Cámbrico": "Paleozoico", "Ordovícico": "Paleozoico", "Silúrico": "Paleozoico",
   "Devónico": "Paleozoico", "Carbonífero": "Paleozoico", "Pérmico": "Paleozoico",
@@ -28,7 +26,7 @@ const ERA_MAP = {
   "Holoceno": "Cenozoico",
 };
 
-// ── GeoJSON moderno (precargado) ──────────────────────────────────────────────
+// ── GeoJSON (precargado) ──────────────────────────────────────────────────────
 const GEOJSON_URL = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
 let worldGeoJSON = null;
 fetch(GEOJSON_URL).then(r => r.json()).then(d => { worldGeoJSON = d; }).catch(() => {});
@@ -43,26 +41,32 @@ async function fetchWorld() {
   } catch { return null; }
 }
 
-// ── Tooltip ───────────────────────────────────────────────────────────────────
+// ── Tooltip individual ────────────────────────────────────────────────────────
 function Tooltip({ animal, eraColor, isLight, onClose }) {
   const navigate = useNavigate();
   return (
     <div
-      style={{ borderColor: `${eraColor}60`, background: isLight ? "#fff" : "#0f0e0c",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
+      style={{
+        borderColor: `${eraColor}60`,
+        background: isLight ? "#fff" : "#0f0e0c",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+      }}
       className="rounded-xl overflow-hidden w-44 border"
     >
       {animal?.imagen && (
         <div className="relative h-20">
           <img src={animal.imagen} alt={animal.nombre} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <button onClick={onClose}
-            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-all">
+          <button
+            onClick={onClose}
+            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-all"
+          >
             <X size={9} />
           </button>
-          {/* Badge de era */}
-          <span style={{ background: `${eraColor}cc`, color: "#fff" }}
-            className="absolute bottom-1.5 left-1.5 font-mono text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded">
+          <span
+            style={{ background: `${eraColor}cc`, color: "#fff" }}
+            className="absolute bottom-1.5 left-1.5 font-mono text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded"
+          >
             {animal.era}
           </span>
         </div>
@@ -88,8 +92,65 @@ function Tooltip({ animal, eraColor, isLight, onClose }) {
   );
 }
 
+// ── Cluster Tooltip ───────────────────────────────────────────────────────────
+function ClusterTooltip({ puntos, isLight, onClose }) {
+  const navigate = useNavigate();
+  return (
+    <div
+      style={{
+        background: isLight ? "#fff" : "#0f0e0c",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        border: `1px solid ${isLight ? "#e5e0d8" : "#2a2520"}`,
+      }}
+      className="rounded-xl overflow-hidden w-52"
+    >
+      {/* Cabecera */}
+      <div className={`flex items-center justify-between px-3 py-2 border-b ${isLight ? "border-stone-100 bg-stone-50" : "border-[#1a1816] bg-[#0c0b0a]"}`}>
+        <span className={`font-mono text-[9px] uppercase tracking-widest font-bold ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
+          {puntos.length} {puntos.length === 1 ? "especie" : "especies"}
+        </span>
+        <button
+          onClick={onClose}
+          className={`w-4 h-4 flex items-center justify-center rounded ${isLight ? "text-stone-400 hover:text-stone-700" : "text-[#4a3f32] hover:text-[#f5e6c8]"}`}
+        >
+          <X size={10} />
+        </button>
+      </div>
+      {/* Lista */}
+      <div className="max-h-64 overflow-y-auto">
+        {puntos.map(p => {
+          const animal = p.animal;
+          const color = ERA_CONFIG[p.eraGrupo]?.color || "#cf9a5a";
+          return (
+            <button
+              key={p.id}
+              onClick={() => navigate(`/animal/${encodeURIComponent(animal.nombre.toLowerCase())}`)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 border-b last:border-none text-left transition-all
+                ${isLight ? "border-stone-50 hover:bg-amber-50" : "border-[#1a1816] hover:bg-amber-600/5"}`}
+            >
+              {animal?.imagen && (
+                <div className="w-8 h-8 shrink-0 rounded-lg overflow-hidden">
+                  <img src={animal.imagen} alt={animal.nombre} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p style={{ color }} className="font-mono text-[10px] font-bold uppercase tracking-wide truncate leading-tight">
+                  {animal?.nombre}
+                </p>
+                <p className={`font-mono text-[8px] truncate ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
+                  {animal?.era}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Mapa SVG ──────────────────────────────────────────────────────────────────
-function GeoMap({ geojson, puntos, isLight, onPointClick, activeAnimal, svgRef, zoomRef }) {
+function GeoMap({ geojson, puntos, isLight, onPointClick, activeCluster, svgRef, zoomRef, projRef }) {
   const containerRef = useRef(null);
   const gRef = useRef(null);
   const [W, setW] = useState(900);
@@ -118,6 +179,12 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeAnimal, svgRef, 
     setZoomLevel(1);
   }, [W, H]);
 
+  // Proyección D3
+  const proj = d3.geoNaturalEarth1().scale(W / 6.3).translate([W / 2, H / 2]);
+  if (projRef) projRef.current = proj;
+  const path = d3.geoPath().projection(proj);
+  const grat = d3.geoGraticule()();
+
   const handleZoom = (factor) => {
     if (!svgRef.current || !zoomRef.current) return;
     d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, factor);
@@ -128,20 +195,19 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeAnimal, svgRef, 
     d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.transform, d3.zoomIdentity);
   };
 
-  const proj = d3.geoNaturalEarth1().scale(W / 6.3).translate([W / 2, H / 2]);
-  const path = d3.geoPath().projection(proj);
-  const grat = d3.geoGraticule()();
-
   const ocean  = isLight ? "#b8d4e8" : "#0a1a28";
   const land   = isLight ? "#c4a97a" : "#4a3a1e";
   const stroke = isLight ? "#7a6040" : "#9a7a50";
   const grid   = isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.07)";
 
+  const activeIds = new Set(activeCluster?.map(a => a.id) || []);
+
   return (
     <div ref={containerRef} className="w-full relative">
       <svg
         ref={svgRef}
-        width={W} height={H}
+        width={W}
+        height={H}
         style={{ display: "block", width: "100%", height: "auto", cursor: "grab" }}
       >
         <rect width={W} height={H} fill={ocean} />
@@ -154,16 +220,25 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeAnimal, svgRef, 
             const c = proj([p.lon, p.lat]);
             if (!c) return null;
             const [cx, cy] = c;
-            const isActive = activeAnimal?.id === p.id;
-            const r = (isActive ? 6 : 4) / Math.sqrt(zoomLevel);
-            const rPulse = (isActive ? 16 : 9) / Math.sqrt(zoomLevel);
+            const isActive = activeIds.has(p.id);
+            const r = isActive ? 3.5 : 2.5;
             return (
-              <g key={`${p.id}-${p.lon}-${p.lat}`}
-                onClick={e => onPointClick(p, cx, cy, e)}
-                style={{ cursor: "pointer" }}>
-                <circle cx={cx} cy={cy} r={rPulse} fill={p.eraColor} opacity={0.2} />
-                <circle cx={cx} cy={cy} r={r} fill={p.eraColor} stroke="white" strokeWidth={1.5 / zoomLevel}
-                  style={{ filter: `drop-shadow(0 0 ${4 / zoomLevel}px ${p.eraColor}99)` }} />
+              <g
+                key={`${p.id}-${p.lon}-${p.lat}`}
+                style={{ cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPointClick(p, cx, cy, e);
+                }}
+              >
+                {/* Halo sutil — indica zona clickable */}
+                <circle cx={cx} cy={cy} r={isActive ? 6 : 5} fill={p.eraColor} opacity={0.15} />
+                <circle
+                  cx={cx} cy={cy} r={r}
+                  fill={p.eraColor}
+                  stroke={isActive ? "white" : "rgba(255,255,255,0.6)"}
+                  strokeWidth={isActive ? 1 : 0.8}
+                />
               </g>
             );
           })}
@@ -177,9 +252,13 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeAnimal, svgRef, 
           { label: "−", fn: () => handleZoom(1/1.5), title: "Alejar"  },
           { label: "↺", fn: handleReset,              title: "Restablecer", small: true },
         ].map(({ label, fn, title, small }) => (
-          <button key={label} onClick={fn} title={title}
+          <button
+            key={label}
+            onClick={fn}
+            title={title}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-all font-mono font-bold"
-            style={{ fontSize: small ? 10 : 16 }}>
+            style={{ fontSize: small ? 10 : 16 }}
+          >
             {label}
           </button>
         ))}
@@ -208,12 +287,13 @@ function EraCard({ era, config, count, active, onToggle, isLight }) {
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
           <span style={{ background: config.color }} className="w-2 h-2 rounded-full shrink-0" />
-          <span style={{ color: active ? config.color : isLight ? "#78716c" : "#6b5e4e" }}
-            className="font-mono text-[9px] sm:text-[11px] font-bold uppercase tracking-wide">
+          <span
+            style={{ color: active ? config.color : isLight ? "#78716c" : "#6b5e4e" }}
+            className="font-mono text-[9px] sm:text-[11px] font-bold uppercase tracking-wide"
+          >
             {config.label}
           </span>
         </div>
-        {/* check indicator */}
         <span
           style={{
             background: active ? config.color : "transparent",
@@ -224,12 +304,16 @@ function EraCard({ era, config, count, active, onToggle, isLight }) {
           {active && <span className="text-white font-bold" style={{ fontSize: 9, lineHeight: 1 }}>✓</span>}
         </span>
       </div>
-      <span style={{ color: isLight ? "#a09080" : "#4a3f32" }}
-        className="hidden sm:block font-mono text-[9px] uppercase tracking-widest">
+      <span
+        style={{ color: isLight ? "#a09080" : "#4a3f32" }}
+        className="hidden sm:block font-mono text-[9px] uppercase tracking-widest"
+      >
         {config.ma}
       </span>
-      <span style={{ color: active ? config.color : isLight ? "#a09080" : "#4a3f32" }}
-        className="font-mono text-[10px] font-bold">
+      <span
+        style={{ color: active ? config.color : isLight ? "#a09080" : "#4a3f32" }}
+        className="font-mono text-[10px] font-bold"
+      >
         {count} {count === 1 ? "especie" : "especies"}
       </span>
     </button>
@@ -243,20 +327,20 @@ export default function PaleoMap() {
   const svgRef  = useRef(null);
   const zoomRef = useRef(null);
   const mapRef  = useRef(null);
+  const projRef = useRef(null);
 
-  const [geojson, setGeojson]       = useState(null);
-  const [loading, setLoading]       = useState(true);
-  const [activeAnimal, setActiveAnimal] = useState(null);
-  const [tipPos, setTipPos]         = useState({ x: 0, y: 0 });
+  const [geojson, setGeojson]           = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [activeCluster, setActiveCluster] = useState(null); // array de puntos | null
+  const [tipPos, setTipPos]             = useState({ x: 0, y: 0 });
 
-  // Filtros de era — todos activos por defecto
   const [activeEras, setActiveEras] = useState({
     Paleozoico: true,
     Mesozoico:  true,
     Cenozoico:  true,
   });
 
-  // Construir todos los puntos del catálogo con coordenadas
+  // Construir todos los puntos con coordenadas
   const allHallazgos = React.useMemo(() => {
     const hallazgos = getHallazgosForAnimals(allAnimals);
     return hallazgos.map(h => {
@@ -271,13 +355,11 @@ export default function PaleoMap() {
     });
   }, []);
 
-  // Puntos filtrados según eras activas
   const puntosFiltrados = React.useMemo(() =>
     allHallazgos.filter(p => activeEras[p.eraGrupo]),
     [allHallazgos, activeEras]
   );
 
-  // Conteo por era
   const countByEra = React.useMemo(() => {
     const counts = { Paleozoico: 0, Mesozoico: 0, Cenozoico: 0 };
     allHallazgos.forEach(p => { counts[p.eraGrupo] = (counts[p.eraGrupo] || 0) + 1; });
@@ -290,24 +372,90 @@ export default function PaleoMap() {
 
   const toggleEra = (era) => {
     setActiveEras(prev => ({ ...prev, [era]: !prev[era] }));
-    setActiveAnimal(null);
+    setActiveCluster(null);
   };
 
-  const handlePoint = (p, cx, cy, e) => {
+  // Radio de clustering en coordenadas SVG (antes del zoom)
+  // Se divide por el zoom actual para que el área de clustering sea
+  // siempre la misma en pantalla independientemente del nivel de zoom
+  const CLUSTER_RADIUS_PX = 18;
+
+  const handlePoint = (p, svgX, svgY, e) => {
     e.stopPropagation();
-    if (activeAnimal?.id === p.id) { setActiveAnimal(null); return; }
-    const rect = mapRef.current?.getBoundingClientRect();
-    const W = rect?.width  || 900;
-    const H = rect?.height || 450;
-    let x = cx + 14, y = cy + 14;
-    if (x + 190 > W) x = cx - 200;
-    if (y + 200 > H) y = cy - 210;
-    setTipPos({ x, y });
-    setActiveAnimal(p);
-  };
 
-  const activeAnimalData = activeAnimal?.animal;
-  const activeEraColor = activeAnimal ? ERA_CONFIG[activeAnimal.eraGrupo]?.color : "#cf9a5a";
+    // Cerrar si se vuelve a clicar el mismo cluster
+    if (activeCluster && activeCluster.some(c => c.id === p.id)) {
+      setActiveCluster(null);
+      return;
+    }
+
+    const proj = projRef.current;
+    if (!proj) {
+      setActiveCluster([p]);
+      setTipPos({ x: svgX + 14, y: svgY + 14 });
+      return;
+    }
+
+    // Obtener escala de zoom actual desde el atributo transform del <g>
+    const gEl = svgRef.current?.querySelector("g");
+    let scale = 1;
+    if (gEl) {
+      const transform = gEl.getAttribute("transform") || "";
+      // d3 escribe "translate(x,y) scale(k)" — extraer k
+      const m = transform.match(/scale\(([\d.]+)\)/);
+      if (m) scale = parseFloat(m[1]);
+    }
+
+    // Radio efectivo en coordenadas SVG sin zoom
+    const effectiveRadius = CLUSTER_RADIUS_PX / scale;
+
+    // Buscar todos los puntos filtrados a ≤ effectiveRadius del punto clicado
+    const nearby = puntosFiltrados.filter(other => {
+      const oc = proj([other.lon, other.lat]);
+      if (!oc) return false;
+      return Math.hypot(oc[0] - svgX, oc[1] - svgY) <= effectiveRadius;
+    });
+
+    // Calcular posición del tooltip relativa al contenedor del mapa
+    const mapRect = mapRef.current?.getBoundingClientRect();
+    const mapW = mapRect?.width  || 900;
+    const mapH = mapRect?.height || 450;
+
+    // El SVG puede estar escalado (width 100%, height auto) — calcular factor
+    const svgEl = svgRef.current;
+    const svgRect = svgEl?.getBoundingClientRect();
+    const svgNaturalW = svgEl?.getAttribute("width") || mapW;
+    const displayScale = svgRect ? svgRect.width / svgNaturalW : 1;
+
+    // Posición del punto en coordenadas de pantalla relativas al mapa
+    // Necesitamos aplicar zoom + displayScale
+    let screenX = svgX * displayScale * scale;
+    let screenY = svgY * displayScale * scale;
+
+    // Aplicar la traslación del zoom
+    if (gEl) {
+      const transform = gEl.getAttribute("transform") || "";
+      const m = transform.match(/translate\(([\d.-]+)[, ]+([\d.-]+)\)/);
+      if (m) {
+        screenX += parseFloat(m[1]) * displayScale;
+        screenY += parseFloat(m[2]) * displayScale;
+      }
+    }
+
+    // Tooltip size estimado
+    const tipW = 210;
+    const tipH = Math.min(60 + nearby.length * 52, 320);
+
+    let x = screenX + 14;
+    let y = screenY + 14;
+    if (x + tipW > mapW - 8) x = screenX - tipW - 8;
+    if (x < 8) x = 8;
+    if (y + tipH > mapH - 8) y = Math.max(8, screenY - tipH - 8);
+    if (y < 8) y = 8;
+
+    setTipPos({ x, y });
+    setActiveCluster(nearby.length > 0 ? nearby : [p]);
+  };
 
   return (
     <div className={`rounded-2xl border overflow-hidden ${isLight ? "border-stone-200 bg-white" : "border-[#2a2520] bg-[#0f0e0c]"}`}>
@@ -315,7 +463,8 @@ export default function PaleoMap() {
       {/* Tarjetas de era */}
       <div className={`px-5 py-4 border-b ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
         <p className={`font-mono text-[9px] uppercase tracking-[0.2em] mb-3 ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
-          <span className="hidden sm:inline">Filtrar por era — </span>{puntosFiltrados.length} de {allHallazgos.length} especies visibles
+          <span className="hidden sm:inline">Filtrar por era — </span>
+          {puntosFiltrados.length} de {allHallazgos.length} especies visibles
         </p>
         <div className="grid grid-cols-3 sm:flex gap-2">
           {Object.entries(ERA_CONFIG).map(([era, config]) => (
@@ -333,11 +482,16 @@ export default function PaleoMap() {
       </div>
 
       {/* Mapa */}
-      <div ref={mapRef} className="relative" onClick={() => setActiveAnimal(null)}>
-
+      <div
+        ref={mapRef}
+        className="relative"
+        onClick={() => setActiveCluster(null)}  // ← corregido: antes era setActiveAnimal(null)
+      >
         {loading && (
-          <div className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 ${isLight ? "bg-stone-50" : "bg-[#0c0b0a]"}`}
-            style={{ minHeight: 300 }}>
+          <div
+            className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 ${isLight ? "bg-stone-50" : "bg-[#0c0b0a]"}`}
+            style={{ minHeight: 300 }}
+          >
             <Loader size={20} className="animate-spin text-amber-600" />
             <span className={`font-mono text-[10px] uppercase tracking-widest ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
               Cargando mapa...
@@ -350,28 +504,34 @@ export default function PaleoMap() {
           puntos={puntosFiltrados}
           isLight={isLight}
           onPointClick={handlePoint}
-          activeAnimal={activeAnimal}
+          activeCluster={activeCluster}
           svgRef={svgRef}
           zoomRef={zoomRef}
+          projRef={projRef}
         />
 
-        {/* Tooltip — dentro del mapa en desktop, panel debajo en móvil */}
-        {activeAnimal && activeAnimalData && (
-          <>
-            {/* Desktop: posición absoluta dentro del mapa */}
-            <div
-              style={{ position: "absolute", top: tipPos.y, left: tipPos.x, zIndex: 20 }}
-              onClick={e => e.stopPropagation()}
-              className="hidden sm:block"
-            >
+        {/* Cluster Tooltip — desktop */}
+        {activeCluster && activeCluster.length > 0 && (
+          <div
+            style={{ position: "absolute", top: tipPos.y, left: tipPos.x, zIndex: 20 }}
+            onClick={e => e.stopPropagation()}
+            className="hidden sm:block"
+          >
+            {activeCluster.length === 1 ? (
               <Tooltip
-                animal={activeAnimalData}
-                eraColor={activeEraColor}
+                animal={activeCluster[0].animal}
+                eraColor={ERA_CONFIG[activeCluster[0].eraGrupo]?.color || "#cf9a5a"}
                 isLight={isLight}
-                onClose={() => setActiveAnimal(null)}
+                onClose={() => setActiveCluster(null)}
               />
-            </div>
-          </>
+            ) : (
+              <ClusterTooltip
+                puntos={activeCluster}
+                isLight={isLight}
+                onClose={() => setActiveCluster(null)}
+              />
+            )}
+          </div>
         )}
 
         {/* Badge info */}
@@ -382,35 +542,51 @@ export default function PaleoMap() {
         </div>
       </div>
 
-      {/* Panel móvil — aparece debajo del mapa al seleccionar un animal */}
-      {activeAnimal && activeAnimalData && (
+      {/* Panel móvil — cluster */}
+      {activeCluster && activeCluster.length > 0 && (
         <div
-          className={`sm:hidden border-t flex items-center gap-3 px-4 py-3 ${isLight ? "border-stone-200 bg-stone-50" : "border-[#2a2520] bg-[#0c0b0a]"}`}
+          className={`sm:hidden border-t ${isLight ? "border-stone-200 bg-stone-50" : "border-[#2a2520] bg-[#0c0b0a]"}`}
           onClick={e => e.stopPropagation()}
         >
-          {activeAnimalData.imagen && (
-            <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden border" style={{ borderColor: `${activeEraColor}40` }}>
-              <img src={activeAnimalData.imagen} alt={activeAnimalData.nombre} className="w-full h-full object-cover" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p style={{ color: activeEraColor }} className="font-mono text-[14px] font-bold uppercase tracking-wide truncate">
-              {activeAnimalData.nombre}
-            </p>
-            <p className={`font-mono text-[12px] truncate ${isLight ? "text-stone-400" : "text-[#6b5e4e]"}`}>
-              {activeAnimalData.era} · {activeAnimalData.dieta}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+          {activeCluster.map(p => {
+            const animal = p.animal;
+            const color = ERA_CONFIG[p.eraGrupo]?.color || "#cf9a5a";
+            return (
+              <div
+                key={p.id}
+                className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-none ${isLight ? "border-stone-100" : "border-[#1a1816]"}`}
+              >
+                {animal?.imagen && (
+                  <div
+                    className="w-10 h-10 shrink-0 rounded-lg overflow-hidden border"
+                    style={{ borderColor: `${color}40` }}
+                  >
+                    <img src={animal.imagen} alt={animal.nombre} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p style={{ color }} className="font-mono text-[10px] font-bold uppercase tracking-wide truncate">
+                    {animal?.nombre}
+                  </p>
+                  <p className={`font-mono text-[9px] truncate ${isLight ? "text-stone-400" : "text-[#6b5e4e]"}`}>
+                    {animal?.era}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { window.location.href = `/animal/${encodeURIComponent(animal.nombre.toLowerCase())}`; }}
+                  style={{ borderColor: `${color}50`, color }}
+                  className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-transparent hover:opacity-80 transition-all shrink-0"
+                >
+                  Ver →
+                </button>
+              </div>
+            );
+          })}
+          <div className="flex justify-end px-4 py-2">
             <button
-              onClick={() => { window.location.href = `/animal/${encodeURIComponent(activeAnimalData.nombre.toLowerCase())}`; }}
-              style={{ borderColor: `${activeEraColor}50`, color: activeEraColor }}
-              className="font-mono text-[12px] uppercase tracking-widest px-3 py-1.5 rounded-lg border bg-transparent hover:opacity-80 transition-all"
+              onClick={() => setActiveCluster(null)}
+              className={`w-6 h-6 flex items-center justify-center rounded-lg ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}
             >
-              Ver →
-            </button>
-            <button onClick={() => setActiveAnimal(null)}
-              className={`w-6 h-6 flex items-center justify-center rounded-lg ${isLight ? "text-stone-400 hover:text-stone-700" : "text-[#4a3f32] hover:text-[#f5e6c8]"} transition-all`}>
               <X size={13} />
             </button>
           </div>

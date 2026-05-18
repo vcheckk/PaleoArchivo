@@ -1,6 +1,6 @@
 // src/pages/ProfilePage.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "../context/useUser";
 import { useFavorites } from "../context/FavoritesContext";
@@ -9,7 +9,7 @@ import { allAnimals } from "../data/allData";
 import apiClient from "../api/apiClient";
 import Toast from "../components/Toast";
 import {
-  Lock, Trash2, Eye, EyeOff, AlertTriangle, Pencil, Check, X, Upload, ImagePlus,
+  Lock, Trash2, Eye, EyeOff, AlertTriangle, Pencil, Check, X, Upload, ImagePlus, Clock,
 } from "lucide-react";
 
 // ── Avatares predefinidos ─────────────────────────────────────────────────
@@ -26,7 +26,7 @@ const AVATARS = [
 
 const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
 
-// ── Componente separador de sección ──────────────────────────────────────
+// ── Separador de sección ──────────────────────────────────────────────────
 const Divider = ({ label, isLight }) => (
   <div className="flex items-center gap-3 my-6">
     <div className={`flex-1 h-px ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
@@ -35,7 +35,7 @@ const Divider = ({ label, isLight }) => (
   </div>
 );
 
-// ── Componente campo de formulario ────────────────────────────────────────
+// ── Campo de formulario ───────────────────────────────────────────────────
 const Field = ({ label, value, onChange, type = "text", placeholder, isLight, maxLength }) => {
   const [show, setShow] = useState(false);
   const isPassword = type === "password";
@@ -72,6 +72,91 @@ const Field = ({ label, value, onChange, type = "text", placeholder, isLight, ma
   );
 };
 
+// ── Sección Historial ─────────────────────────────────────────────────────
+function HistorySection({ history, isLight }) {
+  const navigate = useNavigate();
+  const [visible, setVisible] = useState(8);
+
+  if (!history || history.length === 0) {
+    return (
+      <p className={`font-mono text-[12px] uppercase tracking-widest ${isLight ? "text-stone-300" : "text-stone-700"}`}>
+        Aún no has visitado ninguna ficha.
+      </p>
+    );
+  }
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffH = Math.floor(diffMs / 3600000);
+    const diffD = Math.floor(diffMs / 86400000);
+    if (diffMin < 1)  return "Ahora";
+    if (diffMin < 60) return `Hace ${diffMin}m`;
+    if (diffH < 24)   return `Hace ${diffH}h`;
+    if (diffD < 7)    return `Hace ${diffD}d`;
+    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  };
+
+  const shown = history.slice(0, visible);
+
+  return (
+    <div>
+      <div className={`rounded-xl border overflow-hidden ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
+        {shown.map((entry, i) => {
+          const animal = allAnimals.find(a => String(a.id) === String(entry.animalId));
+          if (!animal) return null;
+          return (
+            <button
+              key={`${entry.animalId}-${i}`}
+              onClick={() => navigate(`/animal/${encodeURIComponent(animal.nombre.toLowerCase())}`)}
+              className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-all
+                ${i < shown.length - 1
+                  ? isLight ? "border-b border-stone-100" : "border-b border-[#1a1816]"
+                  : ""}
+                ${isLight ? "hover:bg-amber-50" : "hover:bg-amber-600/5"}`}
+            >
+              {/* Thumbnail */}
+              {animal.imagen && (
+                <div className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden border ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
+                  <img src={animal.imagen} alt={animal.nombre} className="w-full h-full object-cover" />
+                </div>
+              )}
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className={`font-mono text-sm font-bold uppercase tracking-wide truncate leading-tight mb-1
+                  ${isLight ? "text-stone-800" : "text-[#f5e6c8]"}`}>
+                  {animal.nombre}
+                </p>
+                <p className={`font-mono text-[11px] truncate ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
+                  {animal.era}
+                </p>
+              </div>
+              {/* Fecha */}
+              <span className={`font-mono text-[11px] shrink-0 ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
+                {formatDate(entry.visitedAt)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {visible < history.length && (
+        <button
+          onClick={() => setVisible(v => v + 8)}
+          className={`mt-3 w-full py-3 rounded-xl border font-mono text-[11px] uppercase tracking-widest transition-all
+            ${isLight
+              ? "border-stone-200 text-stone-400 hover:border-stone-400 hover:text-stone-600"
+              : "border-[#2a2520] text-[#4a3f32] hover:border-[#3a3028] hover:text-[#6b5e4e]"}`}
+        >
+          Ver {Math.min(8, history.length - visible)} más · {history.length - visible} restantes
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────────────────
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -95,7 +180,7 @@ const ProfilePage = () => {
   // ── Subida de foto propia ───────────────────────────────────────────────
   const fileInputRef = useRef(null);
   const [uploadError, setUploadError] = useState("");
-  const [uploadPreview, setUploadPreview] = useState(null); // base64 preview
+  const [uploadPreview, setUploadPreview] = useState(null);
 
   // ── Estado de contraseña ────────────────────────────────────────────────
   const [currentPass, setCurrentPass] = useState("");
@@ -138,21 +223,10 @@ const ProfilePage = () => {
     setUploadError("");
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setUploadError("El archivo debe ser una imagen.");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      setUploadError("La imagen no puede superar los 3 MB.");
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) { setUploadError("El archivo debe ser una imagen."); return; }
+    if (file.size > MAX_FILE_SIZE) { setUploadError("La imagen no puede superar los 3 MB."); return; }
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target.result;
-      setUploadPreview(base64);
-    };
+    reader.onload = (ev) => setUploadPreview(ev.target.result);
     reader.readAsDataURL(file);
   };
 
@@ -248,7 +322,7 @@ const ProfilePage = () => {
               </div>
             </div>
 
-            {/* Nombre y email */}
+            {/* Nombre */}
             <p className={`text-xl font-black italic uppercase tracking-tight leading-tight mb-1 ${isLight ? "text-stone-900" : "text-[#f5e6c8]"}`}>
               {user?.username}
             </p>
@@ -266,6 +340,13 @@ const ProfilePage = () => {
                 <p className="text-2xl font-black text-amber-600">{myFavAnimals.length}</p>
                 <p className={`text-[12px] tracking-[0.16em] uppercase mt-0.5 ${isLight ? "text-stone-400" : "text-stone-600"}`}>
                   {pr.section?.favorites}
+                </p>
+              </div>
+              {/* Visitados */}
+              <div>
+                <p className="text-2xl font-black text-amber-600">{user?.history?.length || 0}</p>
+                <p className={`text-[12px] tracking-[0.16em] uppercase mt-0.5 ${isLight ? "text-stone-400" : "text-stone-600"}`}>
+                  Visitadas
                 </p>
               </div>
               <p className={`text-[12px] tracking-[0.1em] uppercase leading-relaxed ${isLight ? "text-stone-400" : "text-stone-600"}`}>
@@ -323,6 +404,23 @@ const ProfilePage = () => {
               ))}
             </div>
 
+            {/* ── Historial de visitados ── */}
+            <Divider label="Historial de visitados" isLight={isLight} />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="text-amber-600" />
+                <span className={`font-mono text-[12px] uppercase tracking-widest font-bold ${isLight ? "text-stone-500" : "text-[#6b5e4e]"}`}>
+                  Últimas fichas visitadas
+                </span>
+              </div>
+              {user?.history?.length > 0 && (
+                <span className={`font-mono text-[11px] ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
+                  {user.history.length} / 50
+                </span>
+              )}
+            </div>
+            <HistorySection history={user?.history || []} isLight={isLight} />
+
             <Divider label={pr.section?.dangerZone} isLight={isLight} />
             <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border-l-4 border-red-500 ${isLight ? "bg-red-50" : "bg-red-950/10"}`}>
               <p className={`text-sm leading-relaxed ${isLight ? "text-stone-600" : "text-stone-400"}`}>
@@ -365,24 +463,12 @@ const ProfilePage = () => {
                   <p className={`text-[10px] tracking-[0.2em] uppercase mb-3 font-bold ${isLight ? "text-stone-400" : "text-stone-600"}`}>
                     Tu foto
                   </p>
-
-                  {/* Input oculto */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-
-                  {/* Preview o zona de drop */}
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                   {uploadPreview ? (
                     <div className="flex items-center gap-4">
                       <img src={uploadPreview} alt="preview" className="w-16 h-16 rounded-full object-cover border-2 border-amber-500" />
                       <div className="flex flex-col gap-2 flex-1">
-                        <p className={`text-xs ${isLight ? "text-stone-500" : "text-stone-400"}`}>
-                          Vista previa — ¿usar esta foto?
-                        </p>
+                        <p className={`text-xs ${isLight ? "text-stone-500" : "text-stone-400"}`}>Vista previa — ¿usar esta foto?</p>
                         <div className="flex gap-2">
                           <button onClick={handleConfirmUpload}
                             className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] uppercase tracking-widest font-black rounded-lg transition-all">
@@ -396,23 +482,16 @@ const ProfilePage = () => {
                       </div>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
+                    <button onClick={() => fileInputRef.current?.click()}
                       className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl border-2 border-dashed transition-all
                         ${isLight
                           ? "border-stone-200 text-stone-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50"
                           : "border-[#2a2520] text-stone-600 hover:border-amber-600/50 hover:text-amber-500 hover:bg-amber-600/5"}`}>
                       <ImagePlus size={18} />
-                      <span className="text-[11px] uppercase tracking-[0.15em] font-bold">
-                        Subir imagen · máx. 3 MB
-                      </span>
+                      <span className="text-[11px] uppercase tracking-[0.15em] font-bold">Subir imagen · máx. 3 MB</span>
                     </button>
                   )}
-
-                  {/* Error */}
-                  {uploadError && (
-                    <p className="text-[11px] text-red-500 font-mono mt-2">{uploadError}</p>
-                  )}
+                  {uploadError && <p className="text-[11px] text-red-500 font-mono mt-2">{uploadError}</p>}
                 </div>
 
                 {/* ── Separador ── */}
@@ -422,7 +501,7 @@ const ProfilePage = () => {
                   <div className={`flex-1 h-px ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
                 </div>
 
-                {/* ── Grid de avatares predefinidos ── */}
+                {/* ── Grid avatares predefinidos ── */}
                 <div className="grid grid-cols-4 gap-3">
                   {AVATARS.map(av => (
                     <button key={av.id} onClick={() => { setSelectedAvatar(av.url); setUploadPreview(null); setShowAvatarPicker(false); }}
@@ -439,7 +518,6 @@ const ProfilePage = () => {
                     </button>
                   ))}
                 </div>
-
               </div>
             </motion.div>
           </motion.div>

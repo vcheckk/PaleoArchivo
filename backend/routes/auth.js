@@ -82,7 +82,6 @@ router.put('/user/:id', authMiddleware, async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
 
-    // Verificar que username/email no estén en uso por otro usuario
     if (username && username !== user.username) {
       const exists = await User.findOne({ username });
       if (exists) return res.status(400).json({ msg: 'Ese nombre de usuario ya está en uso' });
@@ -194,7 +193,6 @@ router.post('/favorites/add', authMiddleware, async (req, res) => {
 });
 
 // --- TOP FAVORITOS GLOBAL ---
-// Agrega todos los favoritos de todos los usuarios y devuelve los más populares
 router.get('/top-favorites', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
@@ -208,6 +206,50 @@ router.get('/top-favorites', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ msg: 'Error de servidor' });
+  }
+});
+
+// --- HISTORIAL DE VISITADOS ---
+// Añade una entrada al historial del usuario.
+// Si el animal ya existe en el historial lo mueve al frente (más reciente).
+// Mantiene un máximo de 50 entradas (FIFO).
+router.post('/history/add', authMiddleware, async (req, res) => {
+  const { userId, animalId, animalNombre } = req.body;
+
+  if (!userId || !animalId) {
+    return res.status(400).json({ msg: 'Faltan campos requeridos' });
+  }
+
+  if (req.user.id !== userId) {
+    return res.status(403).json({ msg: 'No tienes permiso' });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+
+    const animalIdStr = String(animalId);
+
+    // Eliminar entrada previa del mismo animal (evita duplicados)
+    user.history = user.history.filter(h => h.animalId !== animalIdStr);
+
+    // Insertar al frente (más reciente primero)
+    user.history.unshift({
+      animalId: animalIdStr,
+      animalNombre: animalNombre || "",
+      visitedAt: new Date(),
+    });
+
+    // Recortar a 50 entradas
+    if (user.history.length > 50) {
+      user.history = user.history.slice(0, 50);
+    }
+
+    await user.save();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error en POST /history/add -', err.message);
     res.status(500).json({ msg: 'Error de servidor' });
   }
 });

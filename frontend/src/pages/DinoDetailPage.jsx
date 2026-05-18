@@ -30,8 +30,8 @@ const getRivalText = (dino, rival, language) => {
 
 const RIVAL_STYLE = {
   presa:      { border: "border-blue-500/40",   bg: "bg-blue-500/5",   text: "text-blue-400",   label: { es: "PRESA", en: "PREY", fr: "PROIE", it: "PREDA" } },
-  depredador: { border: "border-red-500/40",  bg: "bg-red-500/5",  text: "text-red-400",  label: { es: "DEPREDADOR", en: "PREDATOR", fr: "PRÉDATEUR", it: "PREDATORE" } },
-  competidor: { border: "border-amber-500/40", bg: "bg-amber-500/5", text: "text-amber-400", label: { es: "RIVAL", en: "RIVAL", fr: "RIVAL", it: "RIVALE" } },
+  depredador: { border: "border-red-500/40",    bg: "bg-red-500/5",    text: "text-red-400",    label: { es: "DEPREDADOR", en: "PREDATOR", fr: "PRÉDATEUR", it: "PREDATORE" } },
+  competidor: { border: "border-amber-500/40",  bg: "bg-amber-500/5",  text: "text-amber-400",  label: { es: "RIVAL", en: "RIVAL", fr: "RIVAL", it: "RIVALE" } },
 };
 
 const Sparkles = ({ isFav, fill }) => {
@@ -58,15 +58,13 @@ const Sparkles = ({ isFav, fill }) => {
 };
 
 // ── Papers científicos ────────────────────────────────────────────────────
-
-// ── Papers científicos ────────────────────────────────────────────────────
 const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
-  const [papers, setPapers]         = useState([]);
-  const [loading, setLoading]       = useState(false);
-  const [expanded, setExpanded]     = useState(false);
-  const [fetched, setFetched]       = useState(false);
-  const [error, setError]           = useState(false);
-  const [visible, setVisible]       = useState(3);
+  const [papers, setPapers]               = useState([]);
+  const [loading, setLoading]             = useState(false);
+  const [expanded, setExpanded]           = useState(false);
+  const [fetched, setFetched]             = useState(false);
+  const [error, setError]                 = useState(false);
+  const [visible, setVisible]             = useState(3);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const isLoggedIn = localStorage.getItem("auth") === "true";
@@ -75,7 +73,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
     es: { title: "Literatura Científica", loading: "Buscando...", empty: "No se encontraron publicaciones indexadas.", scholar: "Ver en Google Scholar", authors: "et al.", noAuthors: "Autor desconocido", btn: "Literatura científica", lockedTitle: "Acceso restringido", lockedMsg: "Inicia sesión para acceder a la literatura científica indexada.", lockedBtn: "Entendido", showVerb: "mostrar", showMore: "más" },
     en: { title: "Scientific Literature",    loading: "Searching...", empty: "No indexed publications found.",             scholar: "View on Google Scholar",  authors: "et al.", noAuthors: "Unknown author",    btn: "Scientific literature",  lockedTitle: "Restricted access",  lockedMsg: "Log in to access indexed scientific literature.",                    lockedBtn: "Got it",   showVerb: "show",     showMore: "more"      },
     fr: { title: "Littérature Scientifique", loading: "Recherche...", empty: "Aucune publication indexée trouvée.",         scholar: "Voir sur Google Scholar",  authors: "et al.", noAuthors: "Auteur inconnu",    btn: "Littérature scientifique", lockedTitle: "Accès restreint",    lockedMsg: "Connectez-vous pour accéder à la littérature scientifique indexée.", lockedBtn: "Compris",  showVerb: "afficher", showMore: "de plus"   },
-    it: { title: "Letteratura Scientifica",  loading: "Ricerca...",   empty: "Nessuna pubblicazione indicizzata trovata.", scholar: "Vedi su Google Scholar",   authors: "et al.", noAuthors: "Autore sconosciuto", btn: "Letteratura scientifica",  lockedTitle: "Accesso limitato",   lockedMsg: "Accedi per visualizzare la letteratura scientifica indicizzata.",    lockedBtn: "Capito", showVerb: "mostra",   showMore: "in più"   },
+    it: { title: "Letteratura Scientifica",  loading: "Ricerca...",   empty: "Nessuna pubblicazione indicizzata trovata.", scholar: "Vedi su Google Scholar",   authors: "et al.", noAuthors: "Autore sconosciuto", btn: "Letteratura scientifica",  lockedTitle: "Accesso limitato",   lockedMsg: "Accedi per visualizzare la letteratura scientifica indicizzata.",    lockedBtn: "Capito",  showVerb: "mostra",   showMore: "in più"   },
   };
   const l = labels[language] || labels.es;
 
@@ -93,10 +91,10 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
     setError(false);
     setExpanded(true);
     setVisible(3);
-    // Buscar primero por nombre exacto del animal
+
     const nameWords = searchName.split(" ").filter(w => w.length > 2);
     const PALEO_FIELDS = ["paleontol", "fossil", "extinct", "dinosaur", "cretaceous", "jurassic", "triassic", "pleistocene", "eocene", "miocene", "oligocene", "pliocene", "permian", "carbonifer", "devonian", "silurian", "ordovician", "cambrian", "holocene", "prehistor", "mesozoic", "cenozoic", "paleozoic", "mammoth", "specimen", "stratigraphy", "theropod", "sauropod", "mammal", "reptile", "amphibian", "vertebrate", "invertebrate", "arthropod"];
-    const SPAM_FIELDS = ["marketing", "machine learning", "deep learning", "neural network", "covid", "cancer", "drug", "clinical", "patient", "hospital", "nursing", "surgery", "cryptocurrency", "blockchain", "social media", "twitter", "facebook", "e-commerce", "supply chain", "algorithm", "cloud computing"];
+    const SPAM_FIELDS  = ["marketing", "machine learning", "deep learning", "neural network", "covid", "cancer", "drug", "clinical", "patient", "hospital", "nursing", "surgery", "cryptocurrency", "blockchain", "social media", "twitter", "facebook", "e-commerce", "supply chain", "algorithm", "cloud computing"];
 
     const parseWork = work => ({
       title:        work.title || "Sin título",
@@ -109,20 +107,16 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
       titleLower:   (work.title || "").toLowerCase(),
     });
 
-    const isSpam = p => SPAM_FIELDS.some(s => p.titleLower.includes(s));
+    const isSpam  = p => SPAM_FIELDS.some(s => p.titleLower.includes(s));
     const hasName = p => nameWords.some(w => p.titleLower.includes(w));
     const hasPaleo = p => PALEO_FIELDS.some(f => p.titleLower.includes(f));
 
-    // Dos búsquedas en paralelo:
-    // A) nombre exacto — máxima relevancia
-    // B) nombre + paleontología — relleno si A no da suficientes
     Promise.all([
       fetch(`https://api.openalex.org/works?search=${encodeURIComponent(searchName)}&per_page=50&filter=open_access.is_oa:true&sort=cited_by_count:desc`).then(r => r.json()),
       fetch(`https://api.openalex.org/works?search=${encodeURIComponent(searchName + " fossil paleontology")}&per_page=30&filter=open_access.is_oa:true&sort=cited_by_count:desc`).then(r => r.json()),
     ])
       .then(([dataA, dataB]) => {
         const allWorks = [...(dataA.results || []), ...(dataB.results || [])];
-        // Deduplicar por DOI/URL
         const seen = new Set();
         const parsed = allWorks
           .map(parseWork)
@@ -133,33 +127,26 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
             return true;
           });
 
-        // Prioridad 1: nombre en título + contexto paleo
         const tier1 = parsed.filter(p => hasName(p) && hasPaleo(p));
-        // Prioridad 2: solo nombre en título
         const tier2 = parsed.filter(p => hasName(p) && !hasPaleo(p));
-        // Prioridad 3: solo contexto paleo (relleno)
         const tier3 = parsed.filter(p => !hasName(p) && hasPaleo(p));
 
-        const results = [...tier1, ...tier2, ...tier3]
-          .map(({ titleLower, ...rest }) => rest);
-
-        setPapers(results);
+        setPapers([...tier1, ...tier2, ...tier3].map(({ titleLower, ...rest }) => rest));
         setFetched(true);
       })
       .catch(() => { setError(true); setExpanded(false); setFetched(false); })
       .finally(() => setLoading(false));
   };
 
-  const btnBase = "inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 font-black text-xs uppercase tracking-widest transition-all";
+  const btnBase     = "inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 font-black text-xs uppercase tracking-widest transition-all";
   const btnLocked   = isLight ? "bg-stone-50 border-stone-200 text-stone-300 cursor-pointer" : "bg-white/[0.02] border-white/5 text-stone-700 cursor-pointer";
   const btnExpanded = isLight ? "bg-stone-100 border-stone-300 text-stone-700" : "bg-white/10 border-white/20 text-white";
   const btnDefault  = isLight ? "bg-white border-stone-200 text-stone-500 hover:border-stone-400" : "bg-white/5 border-white/10 text-stone-400 hover:border-white/25";
-  const btnClass = `${btnBase} ${!isLoggedIn ? btnLocked : expanded ? btnExpanded : btnDefault}`;
+  const btnClass    = `${btnBase} ${!isLoggedIn ? btnLocked : expanded ? btnExpanded : btnDefault}`;
 
   return (
     <div className={`mt-8 pt-6 border-t ${isLight ? "border-stone-200" : "border-white/[0.07]"}`}>
 
-      {/* Modal de acceso restringido */}
       <AnimatePresence>
         {showLoginModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -188,7 +175,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
                   <Link to="/login" onClick={() => setShowLoginModal(false)}
                     className="px-5 py-2.5 rounded-xl border-2 font-black text-[11px] uppercase tracking-widest transition-all hover:opacity-80"
                     style={{ borderColor: hex, color: hex }}>
-                    {dd.loginToAccess}
+                    Login
                   </Link>
                 </div>
               </div>
@@ -197,7 +184,6 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
         )}
       </AnimatePresence>
 
-      {/* Botón compacto */}
       <button onClick={handleToggle} className={btnClass}>
         <BookOpen size={14}
           className={!isLoggedIn ? isLight ? "text-stone-300" : "text-stone-600" : ""}
@@ -216,7 +202,6 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
         }
       </button>
 
-      {/* Panel desplegable */}
       <AnimatePresence>
         {expanded && !loading && (
           <motion.div
@@ -230,8 +215,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
                 <p className={`text-[10px] font-mono uppercase tracking-widest ${isLight ? "text-stone-400" : "text-stone-600"}`}>
                   {language === "es" ? "😅 Solo disponible en inglés, lo sentimos." :
                    language === "fr" ? "😅 Disponible en anglais uniquement, désolé." :
-                   language === "it" ? "😅 Disponibile solo in inglese, ci dispiace." :
-                   ""}
+                   language === "it" ? "😅 Disponibile solo in inglese, ci dispiace." : ""}
                 </p>
                 <a href={scholarUrl} target="_blank" rel="noopener noreferrer"
                   className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors
@@ -288,7 +272,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
                           ? "border-t border-stone-100 text-stone-400 hover:text-stone-700 hover:bg-stone-50"
                           : "border-t border-white/[0.06] text-stone-600 hover:text-stone-300 hover:bg-white/[0.02]"}`}>
                       <ChevronDown size={13} />
-                      `${l.showVerb} ${Math.min(3, papers.length - visible)} ${l.showMore}`
+                      {`${l.showVerb} ${Math.min(3, papers.length - visible)} ${l.showMore}`}
                     </button>
                   )}
                 </div>
@@ -313,9 +297,23 @@ const DinoDetailPage = () => {
   const isLight = colorTheme === "light";
   const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
 
+  // Scroll al inicio al cambiar de animal
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
+  // dino se define aquí — ANTES de cualquier useEffect que lo use
   const dino = allAnimals.find(d => d.nombre.toLowerCase() === decodeURIComponent(id).toLowerCase());
+
+  // Registrar visita en el historial (silencioso, solo si hay sesión)
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    if (!userId || !dino) return;
+    apiClient.post("/history/add", {
+      userId,
+      animalId: String(dino.id),
+      animalNombre: dino.nombre,
+    }).catch(() => {});
+  }, [dino?.id]);
+
   const { translated: descripcionTraducida, loading: loadingDesc } = useTranslatedDescription(dino?.descripcion ?? null, language);
   const isFav = dino ? isFavorite(dino.id) : false;
   const theme = useMemo(() => getDietConfig(dino?.dieta), [dino]);
@@ -362,8 +360,8 @@ const DinoDetailPage = () => {
   );
 
   const fossilFields = [
-    { label: dd.method,    value: dino.metodo,    icon: <FlaskConical size={11} /> },
-    { label: dd.material,  value: dino.material,  icon: <Layers size={11} /> },
+    { label: dd.method,     value: dino.metodo,    icon: <FlaskConical size={11} /> },
+    { label: dd.material,   value: dino.material,  icon: <Layers size={11} /> },
     { label: dd.extinction, value: dino.extincion, icon: <Clock size={11} /> },
   ].filter(f => f.value);
 
@@ -377,7 +375,7 @@ const DinoDetailPage = () => {
 
   const extraFields = [
     { label: dd.type, value: typeLabels[dino.tipo] || dino.tipo },
-    { label: dd.era,  value: dino.era  },
+    { label: dd.era,  value: dino.era },
   ].filter(f => f.value);
 
   return (
@@ -459,9 +457,9 @@ const DinoDetailPage = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-2.5">
               {[
-                { label: dd.length, value: dino.longitud, icon: <Ruler size={11} />, accentHex: "#78716c" },
+                { label: dd.length, value: dino.longitud, icon: <Ruler size={11} />,            accentHex: "#78716c" },
                 { label: dd.height, value: dino.altura,   icon: <ArrowsUpFromLine size={11} />, accentHex: "#78716c" },
-                { label: dd.diet,   value: dino.dieta,    icon: <Utensils size={11} />, accentHex: hex, textColor: theme.text },
+                { label: dd.diet,   value: dino.dieta,    icon: <Utensils size={11} />,          accentHex: hex, textColor: theme.text },
                 { label: dd.status, value: dino.estado || dd.extinct, icon: <Skull size={11} />,
                   accentHex: dino.estado === "VIVO" ? "#22d3ee" : "#ef4444",
                   textColor: dino.estado === "VIVO" ? "text-cyan-400" : "text-red-400" },
@@ -526,6 +524,7 @@ const DinoDetailPage = () => {
                 )}
               </motion.div>
             )}
+
             <AnimalNotes animalId={String(dino.id)} animalNombre={dino.nombre} hex={hex} />
           </div>
 

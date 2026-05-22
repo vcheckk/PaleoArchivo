@@ -46,4 +46,4 @@ const useTranslatedSubName = (text, language) => {
   return { translated, loading };
 };
 
-export default useTranslatedSubName;
+export default useTranslatedSubName; 

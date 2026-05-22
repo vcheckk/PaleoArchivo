@@ -6,8 +6,8 @@ import { useUser } from "../context/useUser";
 import { useTranslation } from "../hooks/useTranslation";
 import { allAnimals } from "../data/allData";
 import { getDietConfig, getDietLabel } from "../data/dietConfig";
+import useTranslatedSubName from "../hooks/useTranslatedSubName";
 
-// ── Parsear longitud en metros ────────────────────────────────────────────────
 function parseLongitudMetros(longitud) {
   if (!longitud) return null;
   const str = String(longitud).toLowerCase();
@@ -20,26 +20,16 @@ function parseLongitudMetros(longitud) {
   return null;
 }
 
-// ── Silueta humana SVG (1.75m de referencia) ─────────────────────────────────
-const HUMAN_PATH = `M 12,4 C 12,6.2 10.2,8 8,8 C 5.8,8 4,6.2 4,4 C 4,1.8 5.8,0 8,0 C 10.2,0 12,1.8 12,4 Z
-  M 3,9 L 13,9 L 14,20 L 10,20 L 10,32 L 6,32 L 6,20 L 2,20 Z
-  M 2,20 L 0,32 L 3,32 L 5,22 Z
-  M 14,20 L 16,32 L 13,32 L 11,22 Z`;
-
 const HUMAN_HEIGHT_M = 1.75;
 
-// ── Buscador de animal ────────────────────────────────────────────────────────
-function AnimalPicker({ value, onChange, exclude, isLight, accentHex, label }) {
+function AnimalPicker({ value, onChange, exclude, isLight, accentHex, label, cm }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
     return allAnimals
-      .filter(a =>
-        a.nombre.toLowerCase().includes(query.toLowerCase()) &&
-        a.id !== exclude?.id
-      )
+      .filter(a => a.nombre.toLowerCase().includes(query.toLowerCase()) && a.id !== exclude?.id)
       .slice(0, 8);
   }, [query, exclude]);
 
@@ -70,7 +60,7 @@ function AnimalPicker({ value, onChange, exclude, isLight, accentHex, label }) {
               onChange={e => { setQuery(e.target.value); setOpen(true); }}
               onFocus={() => setOpen(true)}
               onBlur={() => setTimeout(() => setOpen(false), 150)}
-              placeholder="Buscar especie..."
+              placeholder={cm.searchPlh || "Buscar especie..."}
               className={`flex-1 bg-transparent font-mono text-[11px] uppercase tracking-wide outline-none ${isLight ? "text-stone-700 placeholder:text-stone-300" : "text-[#f5e6c8] placeholder:text-[#3a3028]"}`}
             />
           </div>
@@ -99,7 +89,6 @@ function AnimalPicker({ value, onChange, exclude, isLight, accentHex, label }) {
   );
 }
 
-// ── parsear altura ────────────────────────────────────────────────────────────
 function parseAlturaMetros(altura) {
   if (!altura) return null;
   const str = String(altura).toLowerCase();
@@ -112,8 +101,7 @@ function parseAlturaMetros(altura) {
   return null;
 }
 
-// ── Visualizador: rectángulo ancho=longitud, alto=altura ──────────────────────
-function ScaleVisualizer({ animalA, animalB, colorA, colorB, isLight }) {
+function ScaleVisualizer({ animalA, animalB, colorA, colorB, isLight, cm }) {
   const containerRef = React.useRef(null);
   const [containerW, setContainerW] = React.useState(600);
 
@@ -129,18 +117,14 @@ function ScaleVisualizer({ animalA, animalB, colorA, colorB, isLight }) {
   const altB = parseAlturaMetros(animalB?.altura);
 
   const HUMAN_H = HUMAN_HEIGHT_M;
-  const HUMAN_W = 0.5; // anchura humano estimada
-
-  // Total de metros horizontales que hay que mostrar
-  const GAP_M = 1; // separación entre elementos en metros
+  const HUMAN_W = 0.5;
+  const GAP_M = 1;
   const totalLonM = HUMAN_W + GAP_M + (lonA || 0) + GAP_M + (lonB || 0) + GAP_M;
   const maxAltM = Math.max(altA || 0, altB || 0, HUMAN_H, 1);
 
   const CANVAS_H = 240;
-  const PADDING_LEFT = 40; // espacio para eje Y
+  const PADDING_LEFT = 40;
   const CANVAS_W = containerW - PADDING_LEFT - 16;
-
-  // Escala: la que permita que TODO quepa tanto en ancho como en alto
   const scaleH = CANVAS_H / maxAltM;
   const scaleW = CANVAS_W / totalLonM;
   const PX_PER_M = Math.min(scaleH, scaleW);
@@ -149,26 +133,16 @@ function ScaleVisualizer({ animalA, animalB, colorA, colorB, isLight }) {
 
   const humanPxH = Math.round(HUMAN_H * PX_PER_M);
   const humanPxW = Math.round(HUMAN_W * PX_PER_M);
-
-  const rectA = animalA && lonA && altA
-    ? { w: Math.round(lonA * PX_PER_M), h: Math.round(altA * PX_PER_M) } : null;
-  const rectB = animalB && lonB && altB
-    ? { w: Math.round(lonB * PX_PER_M), h: Math.round(altB * PX_PER_M) } : null;
-
+  const rectA = animalA && lonA && altA ? { w: Math.round(lonA * PX_PER_M), h: Math.round(altA * PX_PER_M) } : null;
+  const rectB = animalB && lonB && altB ? { w: Math.round(lonB * PX_PER_M), h: Math.round(altB * PX_PER_M) } : null;
   const GAP = Math.round(GAP_M * PX_PER_M);
   const LEFT_MARGIN = PADDING_LEFT;
   const humanRight = LEFT_MARGIN + humanPxW + GAP;
   const rectARight = humanRight + (rectA?.w || lonA ? Math.round((lonA||0) * PX_PER_M) : 0) + GAP;
-  const totalW = containerW;
 
   return (
-    <div ref={containerRef}
-      className={`relative rounded-xl overflow-hidden ${isLight ? "bg-stone-50" : "bg-[#0c0b0a]"}`}
-      style={{ minHeight: CANVAS_H + 80 + 20 }}
-    >
-      {/* Cuadrícula */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ opacity: isLight ? 0.1 : 0.06 }}>
+    <div ref={containerRef} className={`relative rounded-xl overflow-hidden ${isLight ? "bg-stone-50" : "bg-[#0c0b0a]"}`} style={{ minHeight: CANVAS_H + 80 + 20 }}>
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: isLight ? 0.1 : 0.06 }}>
         <defs>
           <pattern id="g-s" width="20" height="20" patternUnits="userSpaceOnUse">
             <path d="M 20 0 L 0 0 0 20" fill="none" stroke={isLight ? "#000" : "#fff"} strokeWidth="0.5" />
@@ -181,165 +155,93 @@ function ScaleVisualizer({ animalA, animalB, colorA, colorB, isLight }) {
         <rect width="100%" height="100%" fill="url(#g-l)" />
       </svg>
 
-      {/* Eje Y */}
       <div className="absolute left-2 pointer-events-none" style={{ bottom: 40, height: CANVAS_H }}>
         {Array.from({ length: Math.ceil(maxAltM) + 1 }).map((_, i) => (
-          <div key={i} style={{ position: "absolute", bottom: i * PX_PER_M, left: 0,
-            display: "flex", alignItems: "center", gap: 3 }}>
+          <div key={i} style={{ position: "absolute", bottom: i * PX_PER_M, left: 0, display: "flex", alignItems: "center", gap: 3 }}>
             <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor }}>{i}m</span>
             <div style={{ width: 6, height: 1, background: mutedColor, opacity: 0.4 }} />
           </div>
         ))}
       </div>
 
-      {/* Contenido */}
       <div style={{ position: "relative", paddingBottom: 40, paddingTop: 16, minHeight: CANVAS_H + 68 }}>
-
-        {/* Humano */}
-        <div style={{ position: "absolute", bottom: 40, left: LEFT_MARGIN,
-          display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <img src={humanUrl} alt="Humano" style={{
-            height: humanPxH, width: "auto",
-            objectFit: "contain", objectPosition: "bottom",
-            filter: isLight ? "brightness(0) opacity(0.3)" : "brightness(0) invert(1) opacity(0.25)",
-          }} />
-          <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor, marginTop: 3 }}>
-            1.75m
-          </span>
+        <div style={{ position: "absolute", bottom: 40, left: LEFT_MARGIN, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <img src={humanUrl} alt="Human" style={{ height: humanPxH, width: "auto", objectFit: "contain", objectPosition: "bottom", filter: isLight ? "brightness(0) opacity(0.3)" : "brightness(0) invert(1) opacity(0.25)" }} />
+          <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor, marginTop: 3 }}>1.75m</span>
         </div>
 
-        {/* Rectángulo A */}
         {rectA && (
           <div style={{ position: "absolute", bottom: 40, left: humanRight }}>
-            {/* Rectángulo */}
-            <div style={{
-              width: rectA.w, height: rectA.h,
-              background: `${colorA}30`,
-              border: `2px solid ${colorA}`,
-              borderRadius: 4,
-              boxShadow: `0 0 16px ${colorA}30`,
-              position: "relative",
-            }}>
-                {/* Nombre centrado */}
-              <span style={{
-                position: "absolute", top: "50%", left: "50%",
-                transform: "translate(-50%,-50%)",
-                fontFamily: "monospace", fontSize: 10, color: colorA,
-                fontWeight: "bold", textTransform: "uppercase",
-                textShadow: "0 1px 4px rgba(0,0,0,0.7)",
-                whiteSpace: "nowrap",
-              }}>
+            <div style={{ width: rectA.w, height: rectA.h, background: `${colorA}30`, border: `2px solid ${colorA}`, borderRadius: 4, boxShadow: `0 0 16px ${colorA}30`, position: "relative" }}>
+              <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontFamily: "monospace", fontSize: 10, color: colorA, fontWeight: "bold", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.7)", whiteSpace: "nowrap" }}>
                 {animalA.nombre}
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
-              <span style={{ fontFamily: "monospace", fontSize: 8, color: `${colorA}99` }}>
-                ↔ {animalA.longitud}
-              </span>
+              <span style={{ fontFamily: "monospace", fontSize: 8, color: `${colorA}99` }}>↔ {animalA.longitud}</span>
             </div>
           </div>
         )}
 
-        {/* Rectángulo B */}
         {rectB && (
           <div style={{ position: "absolute", bottom: 40, left: rectARight }}>
-            <div style={{
-              width: rectB.w, height: rectB.h,
-              background: `${colorB}30`,
-              border: `2px solid ${colorB}`,
-              borderRadius: 4,
-              boxShadow: `0 0 16px ${colorB}30`,
-              position: "relative",
-            }}>
-              {/* Nombre centrado */}
-              <span style={{
-                position: "absolute", top: "50%", left: "50%",
-                transform: "translate(-50%,-50%)",
-                fontFamily: "monospace", fontSize: 10, color: colorB,
-                fontWeight: "bold", textTransform: "uppercase",
-                textShadow: "0 1px 4px rgba(0,0,0,0.7)",
-                whiteSpace: "nowrap",
-              }}>
+            <div style={{ width: rectB.w, height: rectB.h, background: `${colorB}30`, border: `2px solid ${colorB}`, borderRadius: 4, boxShadow: `0 0 16px ${colorB}30`, position: "relative" }}>
+              <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontFamily: "monospace", fontSize: 10, color: colorB, fontWeight: "bold", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.7)", whiteSpace: "nowrap" }}>
                 {animalB.nombre}
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
-              <span style={{ fontFamily: "monospace", fontSize: 8, color: `${colorB}99` }}>
-                ↔ {animalB.longitud}
-              </span>
+              <span style={{ fontFamily: "monospace", fontSize: 8, color: `${colorB}99` }}>↔ {animalB.longitud}</span>
             </div>
           </div>
         )}
 
-        {/* Animales sin altura — solo longitud como barra horizontal */}
         {animalA && lonA && !altA && (
-          <div style={{ position: "absolute", bottom: 40, left: humanRight,
-            display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "monospace", fontSize: 9, fontWeight: "bold",
-              textTransform: "uppercase", color: colorA, marginBottom: 4 }}>
-              {animalA.nombre}
-            </span>
-            <div style={{ width: Math.round(lonA * PX_PER_M), height: 28,
-              background: `${colorA}30`, border: `2px solid ${colorA}`, borderRadius: 4,
-              display: "flex", alignItems: "center", paddingLeft: 8 }}>
-              <span style={{ fontFamily: "monospace", fontSize: 9, color: colorA, fontWeight: "bold" }}>
-                {animalA.longitud}
-              </span>
+          <div style={{ position: "absolute", bottom: 40, left: humanRight, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            <span style={{ fontFamily: "monospace", fontSize: 9, fontWeight: "bold", textTransform: "uppercase", color: colorA, marginBottom: 4 }}>{animalA.nombre}</span>
+            <div style={{ width: Math.round(lonA * PX_PER_M), height: 28, background: `${colorA}30`, border: `2px solid ${colorA}`, borderRadius: 4, display: "flex", alignItems: "center", paddingLeft: 8 }}>
+              <span style={{ fontFamily: "monospace", fontSize: 9, color: colorA, fontWeight: "bold" }}>{animalA.longitud}</span>
             </div>
-            <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor, marginTop: 2 }}>
-              Sin datos de altura
-            </span>
+            <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor, marginTop: 2 }}>{cm.noHeight || "Sin datos de altura"}</span>
           </div>
         )}
         {animalB && lonB && !altB && (
-          <div style={{ position: "absolute", bottom: 40, left: rectARight,
-            display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "monospace", fontSize: 9, fontWeight: "bold",
-              textTransform: "uppercase", color: colorB, marginBottom: 4 }}>
-              {animalB.nombre}
-            </span>
-            <div style={{ width: Math.round(lonB * PX_PER_M), height: 28,
-              background: `${colorB}30`, border: `2px solid ${colorB}`, borderRadius: 4,
-              display: "flex", alignItems: "center", paddingLeft: 8 }}>
-              <span style={{ fontFamily: "monospace", fontSize: 9, color: colorB, fontWeight: "bold" }}>
-                {animalB.longitud}
-              </span>
+          <div style={{ position: "absolute", bottom: 40, left: rectARight, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            <span style={{ fontFamily: "monospace", fontSize: 9, fontWeight: "bold", textTransform: "uppercase", color: colorB, marginBottom: 4 }}>{animalB.nombre}</span>
+            <div style={{ width: Math.round(lonB * PX_PER_M), height: 28, background: `${colorB}30`, border: `2px solid ${colorB}`, borderRadius: 4, display: "flex", alignItems: "center", paddingLeft: 8 }}>
+              <span style={{ fontFamily: "monospace", fontSize: 9, color: colorB, fontWeight: "bold" }}>{animalB.longitud}</span>
             </div>
-            <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor, marginTop: 2 }}>
-              Sin datos de altura
-            </span>
+            <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor, marginTop: 2 }}>{cm.noHeight || "Sin datos de altura"}</span>
           </div>
         )}
       </div>
 
-      {/* Línea de base */}
-      <div className="absolute left-0 right-0 h-[2px]"
-        style={{ bottom: 40, background: isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.08)" }} />
-
-      {/* Leyenda */}
+      <div className="absolute left-0 right-0 h-[2px]" style={{ bottom: 40, background: isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.08)" }} />
       <div className="absolute bottom-2 right-4 flex items-center gap-4 pointer-events-none">
-        <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor }}>↕ Alto · ↔ Largo · misma escala</span>
+        <span style={{ fontFamily: "monospace", fontSize: 8, color: mutedColor }}>{cm.scaleCaption || "↕ Alto · ↔ Largo · misma escala"}</span>
       </div>
     </div>
   );
 }
-// ── Stat row ──────────────────────────────────────────────────────────────────
+
 function StatRow({ label, valA, valB, isLight }) {
   return (
     <div className={`flex items-center gap-3 py-2 border-b last:border-none ${isLight ? "border-stone-100" : "border-[#1a1816]"}`}>
-      <span className={`font-mono text-[9px] uppercase tracking-widest w-20 shrink-0 ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>{label}</span>
-      <span className={`flex-1 font-mono text-[11px] font-bold ${isLight ? "text-stone-700" : "text-[#f5e6c8]"}`}>{valA || "—"}</span>
+      <span className={`font-mono text-[10px] uppercase tracking-widest w-24 shrink-0 ${isLight ? "text-stone-400" : "text-[#6b5e4e]"}`}>{label}</span>
+      <span className={`flex-1 font-mono text-[13px] font-bold ${isLight ? "text-stone-700" : "text-[#f5e6c8]"}`}>{valA || "—"}</span>
       <span className={`w-px h-4 ${isLight ? "bg-stone-200" : "bg-[#2a2520]"}`} />
-      <span className={`flex-1 font-mono text-[11px] font-bold text-right ${isLight ? "text-stone-700" : "text-[#f5e6c8]"}`}>{valB || "—"}</span>
+      <span className={`flex-1 font-mono text-[13px] font-bold text-right ${isLight ? "text-stone-700" : "text-[#f5e6c8]"}`}>{valB || "—"}</span>
     </div>
   );
 }
 
-// ── Página principal ──────────────────────────────────────────────────────────
 export default function ComparadorPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { theme, language } = useUser();
+  const { tSection } = useTranslation();
+  const cm = tSection("comparador");
+  const dd = tSection("dinoDetail");
   const isLight = theme === "light";
 
   const initA = allAnimals.find(a => a.nombre.toLowerCase() === (params.get("a") || "").toLowerCase()) || null;
@@ -357,14 +259,17 @@ export default function ComparadorPage() {
 
   const comparMsg = useMemo(() => {
     if (!metrosA || !metrosB || metrosA === metrosB) return null;
-    const bigger = metrosA > metrosB ? animalA : animalB;
+    const bigger  = metrosA > metrosB ? animalA : animalB;
     const smaller = metrosA > metrosB ? animalB : animalA;
     const veces = (Math.max(metrosA, metrosB) / Math.min(metrosA, metrosB)).toFixed(1);
-    const diff = Math.abs(metrosA - metrosB).toFixed(1);
-    const bigColor = metrosA > metrosB ? colorA : colorB;
+    const diff  = Math.abs(metrosA - metrosB).toFixed(1);
+    const bigColor   = metrosA > metrosB ? colorA : colorB;
     const smallColor = metrosA > metrosB ? colorB : colorA;
     return { bigger, smaller, veces, diff, bigColor, smallColor };
   }, [metrosA, metrosB]);
+
+  const { translated: eraA } = useTranslatedSubName(animalA?.era ?? null, language);
+  const { translated: eraB } = useTranslatedSubName(animalB?.era ?? null, language);
 
   const swap = () => { setAnimalA(animalB); setAnimalB(animalA); };
 
@@ -375,7 +280,7 @@ export default function ComparadorPage() {
         {/* Back */}
         <button onClick={() => navigate(-1)}
           className={`flex items-center gap-2 text-[11px] uppercase tracking-widest mb-8 transition-colors ${isLight ? "text-stone-400 hover:text-stone-700" : "text-stone-600 hover:text-stone-300"}`}>
-          <ArrowLeft size={13} /> Volver
+          <ArrowLeft size={13} /> {cm.back || "Volver"}
         </button>
 
         {/* Header */}
@@ -383,11 +288,11 @@ export default function ComparadorPage() {
           <div className="flex items-center gap-3 mb-3">
             <div className="w-6 h-[3px] bg-amber-600" />
             <span className={`text-[10px] uppercase tracking-[0.2em] ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
-              PaleoArchivo · Comparador de tamaño
+              {cm.breadcrumb || "PaleoArchivo · Comparador de tamaño"}
             </span>
           </div>
           <h1 className={`text-4xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none ${isLight ? "text-stone-900" : "text-[#f5e6c8]"}`}>
-            ¿Cuánto más <span className="text-amber-600">grande</span>?
+            {cm.title || "¿Cuánto más"} <span className="text-amber-600">{cm.titleAccent || "grande"}</span>?
           </h1>
         </div>
 
@@ -395,7 +300,7 @@ export default function ComparadorPage() {
         <div className={`rounded-2xl border p-5 mb-6 ${isLight ? "border-stone-200 bg-white" : "border-[#2a2520] bg-[#0f0e0c]"}`}>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 items-end">
             <AnimalPicker value={animalA} onChange={setAnimalA} exclude={animalB}
-              isLight={isLight} language={language} accentHex={colorA} label="Especie A" />
+              isLight={isLight} accentHex={colorA} label={cm.speciesA || "Especie A"} cm={cm} />
             <button onClick={swap}
               className={`flex items-center justify-center w-9 h-9 rounded-lg border transition-all hover:scale-110 mx-auto
                 ${isLight ? "border-stone-200 text-stone-400 hover:border-amber-400 hover:text-amber-600"
@@ -403,47 +308,38 @@ export default function ComparadorPage() {
               <RefreshCw size={14} />
             </button>
             <AnimalPicker value={animalB} onChange={setAnimalB} exclude={animalA}
-              isLight={isLight} language={language} accentHex={colorB} label="Especie B" />
+              isLight={isLight} accentHex={colorB} label={cm.speciesB || "Especie B"} cm={cm} />
           </div>
         </div>
 
         {/* Visualizador */}
         {(animalA || animalB) ? (
           <div className={`rounded-2xl border overflow-hidden mb-6 ${isLight ? "border-stone-200 bg-white" : "border-[#2a2520] bg-[#0f0e0c]"}`}>
-
-            {/* Cabecera */}
             <div className={`px-5 py-3 border-b flex items-center gap-2 ${isLight ? "border-stone-100 bg-stone-50" : "border-[#1a1816] bg-[#0c0b0a]"}`}>
               <Scale size={12} className="text-amber-600" />
               <span className={`font-mono text-[9px] uppercase tracking-[0.2em] ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
-                Comparación a escala real · humano = 1.75 m de referencia
+                {cm.scaleCaption || "Comparación a escala real · humano = 1.75 m de referencia"}
               </span>
             </div>
 
-            {/* Imagen escalada */}
             <div className="p-4">
-              <ScaleVisualizer
-                animalA={animalA} animalB={animalB}
-                colorA={colorA} colorB={colorB}
-                isLight={isLight}
-              />
+              <ScaleVisualizer animalA={animalA} animalB={animalB} colorA={colorA} colorB={colorB} isLight={isLight} cm={cm} />
             </div>
 
-            {/* Mensaje */}
             {comparMsg && (
               <div className={`px-6 py-4 border-t text-center ${isLight ? "border-stone-100" : "border-[#1a1816]"}`}>
                 <p className={`font-mono text-[12px] leading-relaxed ${isLight ? "text-stone-600" : "text-[#a09080]"}`}>
                   <span className="font-bold" style={{ color: comparMsg.bigColor }}>{comparMsg.bigger.nombre}</span>
-                  {" "}era{" "}
+                  {" "}{cm.was || "era"}{" "}
                   <span className="font-black text-amber-600">{comparMsg.veces}×</span>
-                  {" "}más grande que{" "}
+                  {" "}{cm.biggerThan || "más grande que"}{" "}
                   <span className="font-bold" style={{ color: comparMsg.smallColor }}>{comparMsg.smaller.nombre}</span>
-                  {" "}— diferencia de{" "}
+                  {" "}{cm.diffOf || "— diferencia de"}{" "}
                   <span className="font-black text-amber-600">{comparMsg.diff} m</span>
                 </p>
               </div>
             )}
 
-            {/* Stats */}
             {animalA && animalB && (
               <div className={`px-6 py-4 border-t ${isLight ? "border-stone-100" : "border-[#1a1816]"}`}>
                 <div className="flex items-center gap-3 mb-3">
@@ -451,10 +347,10 @@ export default function ComparadorPage() {
                   <span className={`font-mono text-[9px] uppercase tracking-widest ${isLight ? "text-stone-300" : "text-[#3a3028]"}`}>vs</span>
                   <span className="font-bold text-[10px] uppercase tracking-widest flex-1 text-right font-mono" style={{ color: colorB }}>{animalB.nombre}</span>
                 </div>
-                <StatRow label="Longitud" valA={animalA.longitud} valB={animalB.longitud} isLight={isLight} />
-                <StatRow label="Altura"   valA={animalA.altura}   valB={animalB.altura}   isLight={isLight} />
-                <StatRow label="Dieta"    valA={getDietLabel(animalA.dieta, language)} valB={getDietLabel(animalB.dieta, language)} isLight={isLight} />
-                <StatRow label="Era"      valA={animalA.era}      valB={animalB.era}      isLight={isLight} />
+                <StatRow label={dd.length || "Longitud"} valA={animalA.longitud} valB={animalB.longitud} isLight={isLight} />
+                <StatRow label={dd.height || "Altura"}   valA={animalA.altura}   valB={animalB.altura}   isLight={isLight} />
+                <StatRow label={dd.diet   || "Dieta"}    valA={getDietLabel(animalA.dieta, language)} valB={getDietLabel(animalB.dieta, language)} isLight={isLight} />
+                <StatRow label={dd.era    || "Era"}      valA={eraA}             valB={eraB}             isLight={isLight} />
               </div>
             )}
           </div>
@@ -463,30 +359,29 @@ export default function ComparadorPage() {
             <span className="text-5xl">⚖️</span>
             <div className="text-center">
               <p className={`font-mono text-[12px] uppercase tracking-[0.2em] font-black mb-1 ${isLight ? "text-stone-400" : "text-stone-600"}`}>
-                Selecciona dos especies
+                {cm.emptyTitle || "Selecciona dos especies"}
               </p>
               <p className={`font-mono text-[10px] uppercase tracking-widest ${isLight ? "text-stone-300" : "text-stone-700"}`}>
-                para comparar su tamaño
+                {cm.emptySub || "para comparar su tamaño"}
               </p>
             </div>
           </div>
         )}
 
-        {/* Links fichas */}
         {(animalA || animalB) && (
           <div className="flex gap-3 flex-wrap">
             {animalA && (
               <Link to={`/animal/${encodeURIComponent(animalA.nombre.toLowerCase())}`}
                 style={{ borderColor: `${colorA}40`, color: colorA }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border font-mono text-[10px] uppercase tracking-widest hover:opacity-80 transition-all min-w-[200px]">
-                Ver ficha → {animalA.nombre}
+                {cm.viewRecord || "Ver ficha"} → {animalA.nombre}
               </Link>
             )}
             {animalB && (
               <Link to={`/animal/${encodeURIComponent(animalB.nombre.toLowerCase())}`}
                 style={{ borderColor: `${colorB}40`, color: colorB }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border font-mono text-[10px] uppercase tracking-widest hover:opacity-80 transition-all min-w-[200px]">
-                Ver ficha → {animalB.nombre}
+                {cm.viewRecord || "Ver ficha"} → {animalB.nombre}
               </Link>
             )}
           </div>

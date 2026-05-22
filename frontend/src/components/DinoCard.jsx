@@ -10,6 +10,7 @@ import { allAnimals } from "../data/allData";
 import Toast from "./Toast";
 import apiClient from "../api/apiClient";
 import useTranslatedDescription from "../hooks/useTranslatedDescription";
+import useTranslatedSubName from "../hooks/useTranslatedSubName";
 
 const RIVAL_BORDER = {
   depredador: { border: "border-red-500/80",   hover: "group-hover/rival:border-red-400",   bg: "bg-red-500/10"   },
@@ -32,6 +33,7 @@ const DinoCard = ({ dino }) => {
     hovered ? dino.descripcion : null,
     language
   );
+  const { translated: subNameTraducido } = useTranslatedSubName(dino.subName, language);
 
   const rivals = dino.rival
     ? dino.rival.map(r => {
@@ -130,7 +132,7 @@ const DinoCard = ({ dino }) => {
                 </h2>
                 <span className={`text-[12px] font-bold text-amber-500 tracking-tight uppercase break-words
                   ${isLight ? "group-hover:text-stone-700" : "group-hover:text-[#fef3c7]"}`}>
-                  "{dino.subName}"
+                  "{subNameTraducido}"
                 </span>
               </div>
               <div className={`shrink-0 px-2.5 py-1.5 rounded-xl border text-center

@@ -2,18 +2,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { StickyNote, Save, Trash2, Lock, Loader } from "lucide-react";
 import { useUser } from "../context/useUser";
+import { useTranslation } from "../hooks/useTranslation";
 import apiClient from "../api/apiClient";
 
 export default function AnimalNotes({ animalId, animalNombre, hex }) {
-  const { theme } = useUser();
+  const { theme, language } = useUser();
+  const { tSection } = useTranslation();
+  const n = tSection("notes");
   const isLight = theme === "light";
   const token = localStorage.getItem("token");
 
-  const [text, setText]         = useState("");
+  const [text, setText]           = useState("");
   const [savedText, setSavedText] = useState("");
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
-  const [status, setStatus]     = useState(null); // null | "saved" | "deleted" | "error"
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [status, setStatus]       = useState(null); // null | "saved" | "deleted" | "error"
   const [lastSaved, setLastSaved] = useState(null);
 
   const hasChanges = text !== savedText;
@@ -74,9 +77,9 @@ export default function AnimalNotes({ animalId, animalNombre, hex }) {
     return () => clearTimeout(timer);
   }, [text]);
 
-  const bg     = isLight ? "bg-stone-50"     : "bg-[#0c0b0a]";
-  const border = isLight ? "border-stone-200" : "border-white/[0.07]";
-  const muted  = isLight ? "text-stone-400"   : "text-[#4a3f32]";
+  const bg     = isLight ? "bg-stone-50"      : "bg-[#0c0b0a]";
+  const border = isLight ? "border-stone-200"  : "border-white/[0.07]";
+  const muted  = isLight ? "text-stone-400"    : "text-[#4a3f32]";
 
   // Sin sesión
   if (!token) {
@@ -84,7 +87,7 @@ export default function AnimalNotes({ animalId, animalNombre, hex }) {
       <div className={`rounded-xl border-2 border-dashed flex items-center gap-3 px-4 py-3.5 ${isLight ? "border-stone-200" : "border-white/[0.07]"}`}>
         <Lock size={14} className={muted} />
         <p className={`font-mono text-[10px] uppercase tracking-widest ${muted}`}>
-          Inicia sesión para añadir notas privadas
+          {n.loginPrompt || "Inicia sesión para añadir notas privadas"}
         </p>
       </div>
     );
@@ -101,24 +104,17 @@ export default function AnimalNotes({ animalId, animalNombre, hex }) {
         <div className="flex items-center gap-2">
           <StickyNote size={12} style={{ color: hex }} />
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: hex }}>
-            Nota privada
+            {n.title || "Nota privada"}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Indicador de estado */}
           {saving && <Loader size={11} className="animate-spin" style={{ color: hex }} />}
-          {status === "saved" && (
-            <span className="font-mono text-[9px] text-green-500 uppercase tracking-widest">Guardada ✓</span>
-          )}
-          {status === "deleted" && (
-            <span className="font-mono text-[9px] text-amber-500 uppercase tracking-widest">Borrada</span>
-          )}
-          {status === "error" && (
-            <span className="font-mono text-[9px] text-red-400 uppercase tracking-widest">Error</span>
-          )}
+          {status === "saved"   && <span className="font-mono text-[9px] text-green-500 uppercase tracking-widest">{n.saved   || "Guardada ✓"}</span>}
+          {status === "deleted" && <span className="font-mono text-[9px] text-amber-500 uppercase tracking-widest">{n.deleted || "Borrada"}</span>}
+          {status === "error"   && <span className="font-mono text-[9px] text-red-400 uppercase tracking-widest">{n.error   || "Error"}</span>}
           {hasChanges && !saving && (
             <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: `${hex}80` }}>
-              Sin guardar
+              {n.unsaved || "Sin guardar"}
             </span>
           )}
         </div>
@@ -137,7 +133,7 @@ export default function AnimalNotes({ animalId, animalNombre, hex }) {
               onChange={e => setText(e.target.value)}
               maxLength={1000}
               rows={3}
-              placeholder="Escribe tus notas sobre este animal..."
+              placeholder={n.placeholder || "Escribe tus notas sobre este animal..."}
               className={`w-full bg-transparent font-mono text-[12px] resize-none outline-none transition-colors
                 ${isLight ? "text-stone-700 placeholder:text-stone-300" : "text-[#f5e6c8] placeholder:text-[#3a3028]"}`}
             />
@@ -147,7 +143,7 @@ export default function AnimalNotes({ animalId, animalNombre, hex }) {
               <span className={`font-mono text-[9px] ${muted}`}>
                 {text.length}/1000
                 {lastSaved && !hasChanges && (
-                  <> · guardada {new Date(lastSaved).toLocaleDateString()}</>
+                  <> · {n.savedOn || "guardada"} {new Date(lastSaved).toLocaleDateString()}</>
                 )}
               </span>
               <div className="flex items-center gap-2">
@@ -155,13 +151,13 @@ export default function AnimalNotes({ animalId, animalNombre, hex }) {
                   <button onClick={remove} disabled={saving}
                     className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg transition-all
                       ${isLight ? "text-red-400 hover:bg-red-50" : "text-red-400/60 hover:bg-red-400/10"}`}>
-                    <Trash2 size={10} /> Borrar
+                    <Trash2 size={10} /> {n.delete || "Borrar"}
                   </button>
                 )}
                 <button onClick={save} disabled={saving || !hasChanges}
                   style={{ borderColor: hasChanges ? `${hex}50` : "transparent", color: hasChanges ? hex : `${hex}40` }}
                   className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border transition-all disabled:opacity-40">
-                  <Save size={10} /> Guardar
+                  <Save size={10} /> {n.save || "Guardar"}
                 </button>
               </div>
             </div>

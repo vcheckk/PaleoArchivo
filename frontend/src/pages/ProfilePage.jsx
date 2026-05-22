@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "../context/useUser";
@@ -9,7 +9,8 @@ import { allAnimals } from "../data/allData";
 import apiClient from "../api/apiClient";
 import Toast from "../components/Toast";
 import {
-  Lock, Trash2, Eye, EyeOff, AlertTriangle, Pencil, Check, X, Upload, ImagePlus, Clock,
+  Trash2, Eye, EyeOff, AlertTriangle, Pencil, Check, X, ImagePlus,
+  Clock, BarChart2, Star, BookOpen,
 } from "lucide-react";
 
 // ── Avatares predefinidos ─────────────────────────────────────────────────
@@ -24,9 +25,24 @@ const AVATARS = [
   { id: "av8", url: "https://www.mundoprehistorico.com/wp-content/uploads/Compsognathus-01.jpg", label: "Compsognathus" },
 ];
 
-const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
+const MAX_FILE_SIZE = 3 * 1024 * 1024;
 
-// ── Separador de sección ──────────────────────────────────────────────────
+const ERA_MAP = {
+  "Cámbrico": "Paleozoico", "Ordovícico": "Paleozoico", "Silúrico": "Paleozoico",
+  "Devónico": "Paleozoico", "Carbonífero": "Paleozoico", "Pérmico": "Paleozoico",
+  "Triásico": "Mesozoico",  "Jurásico": "Mesozoico",    "Cretácico": "Mesozoico",
+  "Paleoceno": "Cenozoico", "Eoceno": "Cenozoico",      "Oligoceno": "Cenozoico",
+  "Mioceno": "Cenozoico",   "Plioceno": "Cenozoico",    "Pleistoceno": "Cenozoico",
+  "Holoceno": "Cenozoico",
+};
+
+const ERA_COLORS = {
+  Paleozoico: { color: "#6aafc5", bg: "rgba(106,175,197,0.12)", border: "rgba(106,175,197,0.3)" },
+  Mesozoico:  { color: "#6abf6a", bg: "rgba(106,191,106,0.12)", border: "rgba(106,191,106,0.3)" },
+  Cenozoico:  { color: "#cf9a5a", bg: "rgba(207,154,90,0.12)",  border: "rgba(207,154,90,0.3)"  },
+};
+
+// ── Separador ─────────────────────────────────────────────────────────────
 const Divider = ({ label, isLight }) => (
   <div className="flex items-center gap-3 my-6">
     <div className={`flex-1 h-px ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
@@ -72,15 +88,163 @@ const Field = ({ label, value, onChange, type = "text", placeholder, isLight, ma
   );
 };
 
+// ── Barra de distribución por era ─────────────────────────────────────────
+function EraBar({ label, counts, total, isLight }) {
+  const eras = ["Paleozoico", "Mesozoico", "Cenozoico"];
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2.5">
+        <span className={`font-mono text-[12px] font-bold uppercase tracking-widest ${isLight ? "text-stone-500" : "text-[#6b5e4e]"}`}>
+          {label}
+        </span>
+        <span className={`font-mono text-[13px] font-black ${isLight ? "text-stone-700" : "text-[#f5e6c8]"}`}>
+          {total}
+        </span>
+      </div>
+      {total === 0 ? (
+        <div className={`h-3 rounded-full ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
+      ) : (
+        <div className="flex h-3 rounded-full overflow-hidden gap-px">
+          {eras.map(era => {
+            const pct = (counts[era] || 0) / total * 100;
+            if (pct === 0) return null;
+            return (
+              <motion.div
+                key={era}
+                initial={{ width: 0 }}
+                animate={{ width: `${pct}%` }}
+                transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                style={{ backgroundColor: ERA_COLORS[era].color }}
+                className="h-full"
+                title={`${era}: ${counts[era] || 0}`}
+              />
+            );
+          })}
+        </div>
+      )}
+      {total > 0 && (
+        <div className="flex items-center gap-4 mt-3 flex-wrap">
+          {eras.map(era => {
+            const n = counts[era] || 0;
+            if (n === 0) return null;
+            return (
+              <div key={era} className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ERA_COLORS[era].color }} />
+                <span className={`font-mono text-[11px] ${isLight ? "text-stone-500" : "text-[#6b5e4e]"}`}>
+                  {era} · {n}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Sección Estadísticas ──────────────────────────────────────────────────
+function StatsSection({ user, favAnimals, isLight, pr }) {
+  const history = user?.history || [];
+  const notes   = user?.notes   || [];
+
+  const favByEra = useMemo(() => {
+    const counts = { Paleozoico: 0, Mesozoico: 0, Cenozoico: 0 };
+    favAnimals.forEach(a => { const era = ERA_MAP[a.era]; if (era) counts[era]++; });
+    return counts;
+  }, [favAnimals]);
+
+  const histByEra = useMemo(() => {
+    const counts = { Paleozoico: 0, Mesozoico: 0, Cenozoico: 0 };
+    history.forEach(h => {
+      const animal = allAnimals.find(a => String(a.id) === String(h.animalId));
+      if (!animal) return;
+      const era = ERA_MAP[animal.era];
+      if (era) counts[era]++;
+    });
+    return counts;
+  }, [history]);
+
+  const eraFavorita = useMemo(() => {
+    const totals = {
+      Paleozoico: (favByEra.Paleozoico || 0) + (histByEra.Paleozoico || 0),
+      Mesozoico:  (favByEra.Mesozoico  || 0) + (histByEra.Mesozoico  || 0),
+      Cenozoico:  (favByEra.Cenozoico  || 0) + (histByEra.Cenozoico  || 0),
+    };
+    const max = Math.max(...Object.values(totals));
+    if (max === 0) return null;
+    return Object.entries(totals).find(([, v]) => v === max)?.[0] || null;
+  }, [favByEra, histByEra]);
+
+  const hasData = favAnimals.length > 0 || history.length > 0;
+
+  const cards = [
+    { icon: <Star size={14} />,     label: pr.section?.favorites_label || "Favoritos", value: favAnimals.length, color: "#cf9a5a" },
+    { icon: <Clock size={14} />,    label: pr.section?.visited         || "Visitadas",  value: history.length,    color: "#6aafc5" },
+    { icon: <BookOpen size={14} />, label: pr.section?.notes           || "Notas",      value: notes.length,      color: "#6abf6a" },
+  ];
+
+  return (
+    <div className="flex flex-col gap-5">
+
+      {/* Tarjetas resumen */}
+      <div className="grid grid-cols-3 gap-3">
+        {cards.map(({ icon, label, value, color }) => (
+          <div key={label}
+            className={`relative flex flex-col items-start gap-1.5 p-4 rounded-xl border overflow-hidden
+              ${isLight ? "bg-stone-50 border-stone-100" : "bg-black/20 border-white/[0.06]"}`}>
+            <div className="absolute inset-x-0 top-0 h-[2px]" style={{ backgroundColor: color }} />
+            <div className="flex items-center gap-1.5 mt-1" style={{ color }}>
+              {icon}
+              <span className={`font-mono text-[11px] uppercase tracking-widest ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
+                {label}
+              </span>
+            </div>
+            <p className="font-mono text-3xl font-black" style={{ color }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Era favorita */}
+      {eraFavorita && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-xl border"
+          style={{ borderColor: ERA_COLORS[eraFavorita].border, background: ERA_COLORS[eraFavorita].bg }}>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ERA_COLORS[eraFavorita].color }} />
+          <span className={`font-mono text-[11px] uppercase tracking-widest ${isLight ? "text-stone-500" : "text-[#6b5e4e]"}`}>
+            {pr.section?.eraFavorite || "Era favorita"}
+          </span>
+          <span className="font-mono text-[14px] font-black uppercase tracking-wide ml-auto"
+            style={{ color: ERA_COLORS[eraFavorita].color }}>
+            {eraFavorita}
+          </span>
+        </div>
+      )}
+
+      {/* Barras de distribución */}
+      {hasData ? (
+        <div className={`flex flex-col gap-5 p-4 rounded-xl border
+          ${isLight ? "bg-stone-50 border-stone-100" : "bg-black/20 border-white/[0.06]"}`}>
+          <EraBar label={pr.section?.favsByEra  || "Favoritos por era"} counts={favByEra}  total={favAnimals.length} isLight={isLight} />
+          <div className={`h-px ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
+          <EraBar label={pr.section?.visitedByEra || "Visitadas por era"} counts={histByEra} total={history.length}    isLight={isLight} />
+        </div>
+      ) : (
+        <p className={`font-mono text-[11px] uppercase tracking-widest ${isLight ? "text-stone-300" : "text-stone-700"}`}>
+          {pr.section?.emptyStats || "Explora el archivo para ver tus estadísticas."}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Sección Historial ─────────────────────────────────────────────────────
-function HistorySection({ history, isLight }) {
+function HistorySection({ history, isLight, pr }) {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(8);
 
   if (!history || history.length === 0) {
     return (
       <p className={`font-mono text-[12px] uppercase tracking-widest ${isLight ? "text-stone-300" : "text-stone-700"}`}>
-        Aún no has visitado ninguna ficha.
+        {pr.section?.emptyHistory || "Aún no has visitado ninguna ficha."}
       </p>
     );
   }
@@ -88,10 +252,10 @@ function HistorySection({ history, isLight }) {
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
     const now = new Date();
-    const diffMs = now - d;
+    const diffMs  = now - d;
     const diffMin = Math.floor(diffMs / 60000);
-    const diffH = Math.floor(diffMs / 3600000);
-    const diffD = Math.floor(diffMs / 86400000);
+    const diffH   = Math.floor(diffMs / 3600000);
+    const diffD   = Math.floor(diffMs / 86400000);
     if (diffMin < 1)  return "Ahora";
     if (diffMin < 60) return `Hace ${diffMin}m`;
     if (diffH < 24)   return `Hace ${diffH}h`;
@@ -108,22 +272,17 @@ function HistorySection({ history, isLight }) {
           const animal = allAnimals.find(a => String(a.id) === String(entry.animalId));
           if (!animal) return null;
           return (
-            <button
-              key={`${entry.animalId}-${i}`}
+            <button key={`${entry.animalId}-${i}`}
               onClick={() => navigate(`/animal/${encodeURIComponent(animal.nombre.toLowerCase())}`)}
               className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-all
-                ${i < shown.length - 1
-                  ? isLight ? "border-b border-stone-100" : "border-b border-[#1a1816]"
-                  : ""}
-                ${isLight ? "hover:bg-amber-50" : "hover:bg-amber-600/5"}`}
-            >
-              {/* Thumbnail */}
+                ${i < shown.length - 1 ? isLight ? "border-b border-stone-100" : "border-b border-[#1a1816]" : ""}
+                ${isLight ? "hover:bg-amber-50" : "hover:bg-amber-600/5"}`}>
               {animal.imagen && (
-                <div className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden border ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
+                <div className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden border
+                  ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
                   <img src={animal.imagen} alt={animal.nombre} className="w-full h-full object-cover" />
                 </div>
               )}
-              {/* Info */}
               <div className="flex-1 min-w-0">
                 <p className={`font-mono text-sm font-bold uppercase tracking-wide truncate leading-tight mb-1
                   ${isLight ? "text-stone-800" : "text-[#f5e6c8]"}`}>
@@ -133,7 +292,6 @@ function HistorySection({ history, isLight }) {
                   {animal.era}
                 </p>
               </div>
-              {/* Fecha */}
               <span className={`font-mono text-[11px] shrink-0 ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
                 {formatDate(entry.visitedAt)}
               </span>
@@ -141,16 +299,12 @@ function HistorySection({ history, isLight }) {
           );
         })}
       </div>
-
       {visible < history.length && (
-        <button
-          onClick={() => setVisible(v => v + 8)}
+        <button onClick={() => setVisible(v => v + 8)}
           className={`mt-3 w-full py-3 rounded-xl border font-mono text-[11px] uppercase tracking-widest transition-all
-            ${isLight
-              ? "border-stone-200 text-stone-400 hover:border-stone-400 hover:text-stone-600"
-              : "border-[#2a2520] text-[#4a3f32] hover:border-[#3a3028] hover:text-[#6b5e4e]"}`}
-        >
-          Ver {Math.min(8, history.length - visible)} más · {history.length - visible} restantes
+            ${isLight ? "border-stone-200 text-stone-400 hover:border-stone-400 hover:text-stone-600"
+                      : "border-[#2a2520] text-[#4a3f32] hover:border-[#3a3028] hover:text-[#6b5e4e]"}`}>
+          {Math.min(8, history.length - visible)} {pr.section?.showMore || "más"} · {history.length - visible - Math.min(8, history.length - visible)} restantes
         </button>
       )}
     </div>
@@ -162,40 +316,34 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const { theme: colorTheme, language, setLanguage } = useUser();
   const { favorites, clearFavorites } = useFavorites();
-  const { tSection, t } = useTranslation();
+  const { tSection } = useTranslation();
   const pr = tSection("profile");
   const isLight = colorTheme === "light";
 
-  // ── Estado del usuario ──────────────────────────────────────────────────
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
-
+  const [user, setUser]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [toast, setToast]       = useState({ show: false, msg: "", type: "success" });
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [bio, setBio] = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState("");
+  const [email, setEmail]       = useState("");
+  const [bio, setBio]           = useState("");
+  const [selectedAvatar, setSelectedAvatar]     = useState("");
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
-  // ── Subida de foto propia ───────────────────────────────────────────────
   const fileInputRef = useRef(null);
-  const [uploadError, setUploadError] = useState("");
+  const [uploadError, setUploadError]     = useState("");
   const [uploadPreview, setUploadPreview] = useState(null);
 
-  // ── Estado de contraseña ────────────────────────────────────────────────
   const [currentPass, setCurrentPass] = useState("");
-  const [newPass, setNewPass] = useState("");
+  const [newPass, setNewPass]         = useState("");
   const [confirmPass, setConfirmPass] = useState("");
 
-  // ── Estado de borrar cuenta ─────────────────────────────────────────────
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletePass, setDeletePass] = useState("");
+  const [showDeleteModal, setShowDeleteModal]     = useState(false);
+  const [deletePass, setDeletePass]               = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  const userId = localStorage.getItem("userId");
+  const userId       = localStorage.getItem("userId");
   const myFavAnimals = allAnimals.filter(a => favorites.includes(String(a.id)));
 
-  // ── Carga del usuario ───────────────────────────────────────────────────
   useEffect(() => {
     if (!userId || localStorage.getItem("auth") !== "true") {
       navigate("/login", { replace: true }); return;
@@ -215,10 +363,8 @@ const ProfilePage = () => {
     fetchUser();
   }, []);
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => setToast({ show: true, msg, type });
 
-  // ── Manejo de archivo subido ─────────────────────────────────────────────
   const handleFileChange = (e) => {
     setUploadError("");
     const file = e.target.files?.[0];
@@ -233,18 +379,15 @@ const ProfilePage = () => {
   const handleConfirmUpload = () => {
     if (!uploadPreview) return;
     setSelectedAvatar(uploadPreview);
-    setUploadPreview(null);
-    setUploadError("");
+    setUploadPreview(null); setUploadError("");
     setShowAvatarPicker(false);
   };
 
   const handleCancelUpload = () => {
-    setUploadPreview(null);
-    setUploadError("");
+    setUploadPreview(null); setUploadError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ── Guardar perfil ──────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
     try {
       const res = await apiClient.put(`/user/${userId}`, { username, email, bio, avatar: selectedAvatar });
@@ -255,7 +398,6 @@ const ProfilePage = () => {
     } catch (err) { showToast(err.response?.data?.msg || pr.toast?.saveError, "error"); }
   };
 
-  // ── Cambiar contraseña ──────────────────────────────────────────────────
   const handleChangePassword = async () => {
     if (newPass !== confirmPass) return showToast(pr.toast?.passwordMismatch, "error");
     if (newPass.length < 6) return showToast(pr.toast?.passwordTooShort, "error");
@@ -266,7 +408,6 @@ const ProfilePage = () => {
     } catch (err) { showToast(err.response?.data?.msg || pr.toast?.passwordError, "error"); }
   };
 
-  // ── Borrar cuenta ───────────────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== user?.username) return showToast(pr.toast?.nameMismatch, "error");
     try {
@@ -276,45 +417,41 @@ const ProfilePage = () => {
     } catch (err) { showToast(err.response?.data?.msg || pr.toast?.deleteError, "error"); }
   };
 
-  // ── Loading ─────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className={`min-h-screen flex items-center justify-center font-mono text-sm italic tracking-[0.4em] ${isLight ? "bg-[#f7f3ee] text-stone-400" : "bg-[#0c0b0a] text-amber-600"}`}>
+    <div className={`min-h-screen flex items-center justify-center font-mono text-sm italic tracking-[0.4em]
+      ${isLight ? "bg-[#f7f3ee] text-stone-400" : "bg-[#0c0b0a] text-amber-600"}`}>
       {pr.loading}
     </div>
   );
 
   const avatarSrc = selectedAvatar || AVATARS[0].url;
-  const joinDate = new Date(user?.createdAt).toLocaleDateString(
+  const joinDate  = new Date(user?.createdAt).toLocaleDateString(
     language === "en" ? "en-US" : language === "fr" ? "fr-FR" : language === "it" ? "it-IT" : "es-ES",
     { month: "long", year: "numeric" }
   );
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      className={`min-h-screen font-mono transition-colors duration-500 ${isLight ? "bg-[#f7f3ee]" : "bg-[#0c0b0a]"}`}
-    >
+      className={`min-h-screen font-mono transition-colors duration-500 ${isLight ? "bg-[#f7f3ee]" : "bg-[#0c0b0a]"}`}>
       <Toast isVisible={toast.show} message={toast.msg} type={toast.type}
         onClose={() => setToast(t => ({ ...t, show: false }))} />
 
       <div className="max-w-5xl mx-auto px-4 py-8 pb-20">
 
-        {/* ── Botón volver ── */}
         <button onClick={() => navigate(-1)}
-          className={`flex items-center gap-2 text-[11px] uppercase tracking-widest mb-8 transition-colors ${isLight ? "text-stone-400 hover:text-stone-700" : "text-stone-600 hover:text-stone-300"}`}>
+          className={`flex items-center gap-2 text-[11px] uppercase tracking-widest mb-8 transition-colors
+            ${isLight ? "text-stone-400 hover:text-stone-700" : "text-stone-600 hover:text-stone-300"}`}>
           ← {pr.back}
         </button>
 
-        {/* ── Layout split ── */}
-        <div className={`flex flex-col md:flex-row rounded-2xl overflow-hidden border ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
+        <div className={`flex flex-col md:flex-row rounded-2xl overflow-hidden border
+          ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
 
-          {/* ╔══════════════════════════════╗
-              ║  PANEL IZQUIERDO — IDENTIDAD ║
-              ╚══════════════════════════════╝ */}
-          <div className={`md:w-56 shrink-0 flex flex-col p-6 md:border-r ${isLight ? "bg-[#f0ebe3] border-stone-200" : "bg-[#0f0e0c] border-[#2a2520]"}`}>
-
+          {/* ── PANEL IZQUIERDO ── */}
+          <div className={`md:w-56 shrink-0 flex flex-col p-6 md:border-r
+            ${isLight ? "bg-[#f0ebe3] border-stone-200" : "bg-[#0f0e0c] border-[#2a2520]"}`}>
             <div className="w-9 h-[3px] bg-amber-600 mb-6" />
 
-            {/* Avatar */}
             <div className="relative w-28 h-28 mb-5 cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
               <img src={avatarSrc} alt="avatar" className="w-full h-full rounded-full object-cover border-2 border-amber-600/30" />
               <div className="absolute bottom-0 right-0 w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center shadow-lg">
@@ -322,19 +459,16 @@ const ProfilePage = () => {
               </div>
             </div>
 
-            {/* Nombre */}
-            <p className={`text-xl font-black italic uppercase tracking-tight leading-tight mb-1 ${isLight ? "text-stone-900" : "text-[#f5e6c8]"}`}>
+            <p className={`text-xl font-black italic uppercase tracking-tight leading-tight mb-1
+              ${isLight ? "text-stone-900" : "text-[#f5e6c8]"}`}>
               {user?.username}
             </p>
-
-            {/* Bio */}
             {user?.bio && (
               <p className={`text-sm leading-relaxed mb-6 ${isLight ? "text-stone-500" : "text-stone-500"}`}>
                 {user.bio}
               </p>
             )}
 
-            {/* Stats */}
             <div className={`mt-auto pt-5 border-t flex flex-col gap-4 ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
               <div>
                 <p className="text-2xl font-black text-amber-600">{myFavAnimals.length}</p>
@@ -342,11 +476,16 @@ const ProfilePage = () => {
                   {pr.section?.favorites}
                 </p>
               </div>
-              {/* Visitados */}
               <div>
                 <p className="text-2xl font-black text-amber-600">{user?.history?.length || 0}</p>
                 <p className={`text-[12px] tracking-[0.16em] uppercase mt-0.5 ${isLight ? "text-stone-400" : "text-stone-600"}`}>
-                  Visitadas
+                  {pr.section?.visited || "Visitadas"}
+                </p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-amber-600">{user?.notes?.length || 0}</p>
+                <p className={`text-[12px] tracking-[0.16em] uppercase mt-0.5 ${isLight ? "text-stone-400" : "text-stone-600"}`}>
+                  {pr.section?.notes || "Notas"}
                 </p>
               </div>
               <p className={`text-[12px] tracking-[0.1em] uppercase leading-relaxed ${isLight ? "text-stone-400" : "text-stone-600"}`}>
@@ -355,14 +494,13 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          {/* ╔══════════════════════════════╗
-              ║  PANEL DERECHO — FORMULARIOS ║
-              ╚══════════════════════════════╝ */}
+          {/* ── PANEL DERECHO ── */}
           <div className={`flex-1 p-6 md:p-8 ${isLight ? "bg-white" : "bg-[#131211]"}`}>
 
+            {/* Perfil */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <Field label={pr.field?.username} value={username} onChange={setUsername} placeholder={pr.field?.usernamePlaceholder} isLight={isLight} />
-              <Field label={pr.field?.email} value={email} onChange={setEmail} placeholder="tu@email.com" isLight={isLight} />
+              <Field label={pr.field?.email}    value={email}    onChange={setEmail}    placeholder="tu@email.com" isLight={isLight} />
             </div>
             <div className="mb-4">
               <Field label={pr.field?.bio} value={bio} onChange={setBio} placeholder={pr.field?.bioPlaceholder} isLight={isLight} maxLength={300} />
@@ -372,18 +510,21 @@ const ProfilePage = () => {
               {pr.saveChanges}
             </button>
 
+            {/* Contraseña */}
             <Divider label={pr.section?.changePassword} isLight={isLight} />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <Field label={pr.field?.currentPassword} value={currentPass} onChange={setCurrentPass} type="password" placeholder={pr.field?.passwordPlaceholder} isLight={isLight} />
-              <Field label={pr.field?.newPassword} value={newPass} onChange={setNewPass} type="password" placeholder={pr.field?.passwordPlaceholder} isLight={isLight} />
+              <Field label={pr.field?.newPassword}     value={newPass}     onChange={setNewPass}     type="password" placeholder={pr.field?.passwordPlaceholder} isLight={isLight} />
               <Field label={pr.field?.confirmPassword} value={confirmPass} onChange={setConfirmPass} type="password" placeholder={pr.field?.passwordPlaceholder} isLight={isLight} />
             </div>
             <button onClick={handleChangePassword}
               className={`w-full py-3.5 text-[11px] tracking-[0.16em] uppercase font-black rounded-xl transition-all border-2
-                ${isLight ? "border-stone-200 text-stone-600 hover:border-amber-500 hover:text-amber-600" : "border-[#2a2520] text-stone-400 hover:border-amber-600 hover:text-amber-500"}`}>
+                ${isLight ? "border-stone-200 text-stone-600 hover:border-amber-500 hover:text-amber-600"
+                          : "border-[#2a2520] text-stone-400 hover:border-amber-600 hover:text-amber-500"}`}>
               {pr.updatePassword}
             </button>
 
+            {/* Idioma */}
             <Divider label={pr.section?.language} isLight={isLight} />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
@@ -394,23 +535,31 @@ const ProfilePage = () => {
               ].map(({ code, label, active }) => (
                 <button key={code} onClick={() => setLanguage(code)}
                   className={`py-3 text-[11px] tracking-[0.1em] uppercase font-black rounded-xl border-2 transition-all
-                    ${language === code
-                      ? active
-                      : isLight
-                        ? "border-stone-200 text-stone-500 hover:border-stone-400"
-                        : "border-[#2a2520] text-stone-600 hover:border-stone-500"}`}>
+                    ${language === code ? active
+                      : isLight ? "border-stone-200 text-stone-500 hover:border-stone-400"
+                                : "border-[#2a2520] text-stone-600 hover:border-stone-500"}`}>
                   {label}
                 </button>
               ))}
             </div>
 
-            {/* ── Historial de visitados ── */}
-            <Divider label="Historial de visitados" isLight={isLight} />
+            {/* ── Estadísticas ── */}
+            <Divider label={pr.section?.stats || "Estadísticas"} isLight={isLight} />
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart2 size={14} className="text-amber-600" />
+              <span className={`font-mono text-[12px] uppercase tracking-widest font-bold ${isLight ? "text-stone-500" : "text-[#6b5e4e]"}`}>
+                {pr.section?.statsSubtitle || "Tu actividad en el archivo"}
+              </span>
+            </div>
+            <StatsSection user={user} favAnimals={myFavAnimals} isLight={isLight} pr={pr} />
+
+            {/* ── Historial ── */}
+            <Divider label={pr.section?.history || "Historial de visitados"} isLight={isLight} />
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Clock size={14} className="text-amber-600" />
                 <span className={`font-mono text-[12px] uppercase tracking-widest font-bold ${isLight ? "text-stone-500" : "text-[#6b5e4e]"}`}>
-                  Últimas fichas visitadas
+                  {pr.section?.historySubtitle || "Últimas fichas visitadas"}
                 </span>
               </div>
               {user?.history?.length > 0 && (
@@ -419,10 +568,12 @@ const ProfilePage = () => {
                 </span>
               )}
             </div>
-            <HistorySection history={user?.history || []} isLight={isLight} />
+            <HistorySection history={user?.history || []} isLight={isLight} pr={pr} />
 
+            {/* ── Zona de peligro ── */}
             <Divider label={pr.section?.dangerZone} isLight={isLight} />
-            <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border-l-4 border-red-500 ${isLight ? "bg-red-50" : "bg-red-950/10"}`}>
+            <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border-l-4 border-red-500
+              ${isLight ? "bg-red-50" : "bg-red-950/10"}`}>
               <p className={`text-sm leading-relaxed ${isLight ? "text-stone-600" : "text-stone-400"}`}>
                 {pr.dangerDesc}
               </p>
@@ -435,9 +586,7 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* ╔════════════════════════════════════╗
-          ║   MODAL — Selector / subida avatar ║
-          ╚════════════════════════════════════╝ */}
+      {/* ── Modal avatar ── */}
       <AnimatePresence>
         {showAvatarPicker && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -446,23 +595,15 @@ const ProfilePage = () => {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
               className={`w-full max-w-lg rounded-2xl border overflow-hidden ${isLight ? "bg-white border-stone-200" : "bg-[#131211] border-[#2a2520]"}`}>
-
-              {/* Header */}
               <div className={`px-5 py-4 flex items-center justify-between border-b ${isLight ? "border-stone-100" : "border-[#2a2520]"}`}>
                 <span className="text-[11px] font-black uppercase tracking-[0.25em] text-amber-500">{pr.chooseAvatar}</span>
-                <button onClick={() => { setShowAvatarPicker(false); handleCancelUpload(); }}
-                  className="text-stone-500 hover:text-white transition-colors">
+                <button onClick={() => { setShowAvatarPicker(false); handleCancelUpload(); }} className="text-stone-500 hover:text-white transition-colors">
                   <X size={16} />
                 </button>
               </div>
-
               <div className="p-5 flex flex-col gap-5">
-
-                {/* ── Zona de subida propia ── */}
                 <div>
-                  <p className={`text-[10px] tracking-[0.2em] uppercase mb-3 font-bold ${isLight ? "text-stone-400" : "text-stone-600"}`}>
-                    Tu foto
-                  </p>
+                  <p className={`text-[10px] tracking-[0.2em] uppercase mb-3 font-bold ${isLight ? "text-stone-400" : "text-stone-600"}`}>Tu foto</p>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                   {uploadPreview ? (
                     <div className="flex items-center gap-4">
@@ -475,7 +616,8 @@ const ProfilePage = () => {
                             <Check size={12} /> Usar
                           </button>
                           <button onClick={handleCancelUpload}
-                            className={`flex items-center gap-1.5 px-3 py-2 text-[10px] uppercase tracking-widest font-black rounded-lg border transition-all ${isLight ? "border-stone-200 text-stone-500" : "border-[#2a2520] text-stone-500"}`}>
+                            className={`flex items-center gap-1.5 px-3 py-2 text-[10px] uppercase tracking-widest font-black rounded-lg border transition-all
+                              ${isLight ? "border-stone-200 text-stone-500" : "border-[#2a2520] text-stone-500"}`}>
                             <X size={12} /> Cancelar
                           </button>
                         </div>
@@ -484,28 +626,24 @@ const ProfilePage = () => {
                   ) : (
                     <button onClick={() => fileInputRef.current?.click()}
                       className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl border-2 border-dashed transition-all
-                        ${isLight
-                          ? "border-stone-200 text-stone-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50"
-                          : "border-[#2a2520] text-stone-600 hover:border-amber-600/50 hover:text-amber-500 hover:bg-amber-600/5"}`}>
+                        ${isLight ? "border-stone-200 text-stone-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50"
+                                  : "border-[#2a2520] text-stone-600 hover:border-amber-600/50 hover:text-amber-500 hover:bg-amber-600/5"}`}>
                       <ImagePlus size={18} />
                       <span className="text-[11px] uppercase tracking-[0.15em] font-bold">Subir imagen · máx. 3 MB</span>
                     </button>
                   )}
                   {uploadError && <p className="text-[11px] text-red-500 font-mono mt-2">{uploadError}</p>}
                 </div>
-
-                {/* ── Separador ── */}
                 <div className="flex items-center gap-3">
                   <div className={`flex-1 h-px ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
                   <span className={`text-[10px] tracking-[0.2em] uppercase ${isLight ? "text-stone-300" : "text-stone-700"}`}>o elige uno</span>
                   <div className={`flex-1 h-px ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
                 </div>
-
-                {/* ── Grid avatares predefinidos ── */}
                 <div className="grid grid-cols-4 gap-3">
                   {AVATARS.map(av => (
                     <button key={av.id} onClick={() => { setSelectedAvatar(av.url); setUploadPreview(null); setShowAvatarPicker(false); }}
-                      className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all ${selectedAvatar === av.url ? "border-amber-500 scale-95" : "border-transparent hover:border-amber-500/40"}`}>
+                      className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all
+                        ${selectedAvatar === av.url ? "border-amber-500 scale-95" : "border-transparent hover:border-amber-500/40"}`}>
                       <img src={av.url} alt={av.label} className="w-full h-full object-cover" />
                       {selectedAvatar === av.url && (
                         <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
@@ -524,9 +662,7 @@ const ProfilePage = () => {
         )}
       </AnimatePresence>
 
-      {/* ╔═══════════════════════════════╗
-          ║   MODAL — Confirmar borrado   ║
-          ╚═══════════════════════════════╝ */}
+      {/* ── Modal borrar cuenta ── */}
       <AnimatePresence>
         {showDeleteModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -549,7 +685,8 @@ const ProfilePage = () => {
                     {pr.deleteModal?.confirm}
                   </button>
                   <button onClick={() => { setShowDeleteModal(false); setDeletePass(""); setDeleteConfirmText(""); }}
-                    className={`flex-1 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all border-2 ${isLight ? "border-stone-200 text-stone-600" : "border-[#2a2520] text-stone-400"}`}>
+                    className={`flex-1 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all border-2
+                      ${isLight ? "border-stone-200 text-stone-600" : "border-[#2a2520] text-stone-400"}`}>
                     {pr.deleteModal?.cancel}
                   </button>
                 </div>

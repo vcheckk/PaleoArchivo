@@ -1,16 +1,13 @@
 // src/components/PaleoMap.jsx
-// Mapa global con todos los animales del catálogo
-// Filtros por era (Paleozoico / Mesozoico / Cenozoico) para mostrar/ocultar puntos
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as d3 from "d3";
 import { X, Loader } from "lucide-react";
 import { useUser } from "../context/useUser";
+import { useTranslation } from "../hooks/useTranslation";
 import { allAnimals } from "../data/allData";
 import { getHallazgosForAnimals } from "../data/paleomapCoords";
 
-// ── Datos de todos los animales con coordenadas ───────────────────────────────
 const ERA_CONFIG = {
   Paleozoico: { color: "#6aafc5", bg: "rgba(106,175,197,0.15)", border: "rgba(106,175,197,0.5)", label: "Paleozoico", ma: "538–252 Ma" },
   Mesozoico:  { color: "#6abf6a", bg: "rgba(106,191,106,0.15)", border: "rgba(106,191,106,0.5)", label: "Mesozoico",  ma: "252–66 Ma"  },
@@ -26,7 +23,6 @@ const ERA_MAP = {
   "Holoceno": "Cenozoico",
 };
 
-// ── GeoJSON (precargado) ──────────────────────────────────────────────────────
 const GEOJSON_URL = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
 let worldGeoJSON = null;
 fetch(GEOJSON_URL).then(r => r.json()).then(d => { worldGeoJSON = d; }).catch(() => {});
@@ -42,50 +38,36 @@ async function fetchWorld() {
 }
 
 // ── Tooltip individual ────────────────────────────────────────────────────────
-function Tooltip({ animal, eraColor, isLight, onClose }) {
+function Tooltip({ animal, eraColor, isLight, onClose, am }) {
   const navigate = useNavigate();
   return (
     <div
-      style={{
-        borderColor: `${eraColor}60`,
-        background: isLight ? "#fff" : "#0f0e0c",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-      }}
+      style={{ borderColor: `${eraColor}60`, background: isLight ? "#fff" : "#0f0e0c", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
       className="rounded-xl overflow-hidden w-44 border"
     >
       {animal?.imagen && (
         <div className="relative h-20">
           <img src={animal.imagen} alt={animal.nombre} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <button
-            onClick={onClose}
-            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-all"
-          >
+          <button onClick={onClose} className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-all">
             <X size={9} />
           </button>
-          <span
-            style={{ background: `${eraColor}cc`, color: "#fff" }}
-            className="absolute bottom-1.5 left-1.5 font-mono text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded"
-          >
+          <span style={{ background: `${eraColor}cc`, color: "#fff" }} className="absolute bottom-1.5 left-1.5 font-mono text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded">
             {animal.era}
           </span>
         </div>
       )}
       <div className="p-2.5 flex flex-col gap-1.5">
-        <p style={{ color: eraColor }} className="font-mono text-[10px] font-bold uppercase tracking-wide leading-tight">
-          {animal.nombre}
-        </p>
+        <p style={{ color: eraColor }} className="font-mono text-[10px] font-bold uppercase tracking-wide leading-tight">{animal.nombre}</p>
         {animal?.dieta && (
-          <p className={`font-mono text-[9px] ${isLight ? "text-stone-400" : "text-[#6b5e4e]"}`}>
-            {animal.dieta}
-          </p>
+          <p className={`font-mono text-[9px] ${isLight ? "text-stone-400" : "text-[#6b5e4e]"}`}>{animal.dieta}</p>
         )}
         <button
           onClick={() => navigate(`/animal/${encodeURIComponent(animal.nombre.toLowerCase())}`)}
           style={{ borderColor: `${eraColor}50`, color: eraColor }}
           className="w-full flex items-center justify-center gap-1 py-1 rounded-lg border bg-transparent font-mono text-[9px] uppercase tracking-widest hover:opacity-80 transition-all"
         >
-          Ver ficha →
+          {am.viewRecord || "Ver ficha"} →
         </button>
       </div>
     </div>
@@ -93,30 +75,21 @@ function Tooltip({ animal, eraColor, isLight, onClose }) {
 }
 
 // ── Cluster Tooltip ───────────────────────────────────────────────────────────
-function ClusterTooltip({ puntos, isLight, onClose }) {
+function ClusterTooltip({ puntos, isLight, onClose, am }) {
   const navigate = useNavigate();
   return (
     <div
-      style={{
-        background: isLight ? "#fff" : "#0f0e0c",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        border: `1px solid ${isLight ? "#e5e0d8" : "#2a2520"}`,
-      }}
+      style={{ background: isLight ? "#fff" : "#0f0e0c", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", border: `1px solid ${isLight ? "#e5e0d8" : "#2a2520"}` }}
       className="rounded-xl overflow-hidden w-52"
     >
-      {/* Cabecera */}
       <div className={`flex items-center justify-between px-3 py-2 border-b ${isLight ? "border-stone-100 bg-stone-50" : "border-[#1a1816] bg-[#0c0b0a]"}`}>
         <span className={`font-mono text-[9px] uppercase tracking-widest font-bold ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
-          {puntos.length} {puntos.length === 1 ? "especie" : "especies"}
+          {puntos.length} {puntos.length === 1 ? (am.speciesSingular || "especie") : (am.speciesPlural || "especies")}
         </span>
-        <button
-          onClick={onClose}
-          className={`w-4 h-4 flex items-center justify-center rounded ${isLight ? "text-stone-400 hover:text-stone-700" : "text-[#4a3f32] hover:text-[#f5e6c8]"}`}
-        >
+        <button onClick={onClose} className={`w-4 h-4 flex items-center justify-center rounded ${isLight ? "text-stone-400 hover:text-stone-700" : "text-[#4a3f32] hover:text-[#f5e6c8]"}`}>
           <X size={10} />
         </button>
       </div>
-      {/* Lista */}
       <div className="max-h-64 overflow-y-auto">
         {puntos.map(p => {
           const animal = p.animal;
@@ -125,8 +98,7 @@ function ClusterTooltip({ puntos, isLight, onClose }) {
             <button
               key={p.id}
               onClick={() => navigate(`/animal/${encodeURIComponent(animal.nombre.toLowerCase())}`)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 border-b last:border-none text-left transition-all
-                ${isLight ? "border-stone-50 hover:bg-amber-50" : "border-[#1a1816] hover:bg-amber-600/5"}`}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 border-b last:border-none text-left transition-all ${isLight ? "border-stone-50 hover:bg-amber-50" : "border-[#1a1816] hover:bg-amber-600/5"}`}
             >
               {animal?.imagen && (
                 <div className="w-8 h-8 shrink-0 rounded-lg overflow-hidden">
@@ -134,12 +106,8 @@ function ClusterTooltip({ puntos, isLight, onClose }) {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p style={{ color }} className="font-mono text-[10px] font-bold uppercase tracking-wide truncate leading-tight">
-                  {animal?.nombre}
-                </p>
-                <p className={`font-mono text-[8px] truncate ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
-                  {animal?.era}
-                </p>
+                <p style={{ color }} className="font-mono text-[10px] font-bold uppercase tracking-wide truncate leading-tight">{animal?.nombre}</p>
+                <p className={`font-mono text-[8px] truncate ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>{animal?.era}</p>
               </div>
             </button>
           );
@@ -163,7 +131,6 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeCluster, svgRef,
     return () => ro.disconnect();
   }, []);
 
-  // D3 zoom
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return;
     const zoom = d3.zoom()
@@ -179,7 +146,6 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeCluster, svgRef,
     setZoomLevel(1);
   }, [W, H]);
 
-  // Proyección D3
   const proj = d3.geoNaturalEarth1().scale(W / 6.3).translate([W / 2, H / 2]);
   if (projRef) projRef.current = proj;
   const path = d3.geoPath().projection(proj);
@@ -199,17 +165,11 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeCluster, svgRef,
   const land   = isLight ? "#c4a97a" : "#4a3a1e";
   const stroke = isLight ? "#7a6040" : "#9a7a50";
   const grid   = isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.07)";
-
   const activeIds = new Set(activeCluster?.map(a => a.id) || []);
 
   return (
     <div ref={containerRef} className="w-full relative">
-      <svg
-        ref={svgRef}
-        width={W}
-        height={H}
-        style={{ display: "block", width: "100%", height: "auto", cursor: "grab" }}
-      >
+      <svg ref={svgRef} width={W} height={H} style={{ display: "block", width: "100%", height: "auto", cursor: "grab" }}>
         <rect width={W} height={H} fill={ocean} />
         <g ref={gRef}>
           <path d={path(grat)} fill="none" stroke={grid} strokeWidth={0.5} />
@@ -223,42 +183,24 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeCluster, svgRef,
             const isActive = activeIds.has(p.id);
             const r = isActive ? 3.5 : 2.5;
             return (
-              <g
-                key={`${p.id}-${p.lon}-${p.lat}`}
-                style={{ cursor: "pointer" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPointClick(p, cx, cy, e);
-                }}
-              >
-                {/* Halo sutil — indica zona clickable */}
+              <g key={`${p.id}-${p.lon}-${p.lat}`} style={{ cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onPointClick(p, cx, cy, e); }}>
                 <circle cx={cx} cy={cy} r={isActive ? 6 : 5} fill={p.eraColor} opacity={0.15} />
-                <circle
-                  cx={cx} cy={cy} r={r}
-                  fill={p.eraColor}
-                  stroke={isActive ? "white" : "rgba(255,255,255,0.6)"}
-                  strokeWidth={isActive ? 1 : 0.8}
-                />
+                <circle cx={cx} cy={cy} r={r} fill={p.eraColor} stroke={isActive ? "white" : "rgba(255,255,255,0.6)"} strokeWidth={isActive ? 1 : 0.8} />
               </g>
             );
           })}
         </g>
       </svg>
 
-      {/* Controles zoom */}
       <div className="absolute top-3 right-3 flex flex-col gap-1">
         {[
-          { label: "+", fn: () => handleZoom(1.5),   title: "Acercar" },
-          { label: "−", fn: () => handleZoom(1/1.5), title: "Alejar"  },
-          { label: "↺", fn: handleReset,              title: "Restablecer", small: true },
-        ].map(({ label, fn, title, small }) => (
-          <button
-            key={label}
-            onClick={fn}
-            title={title}
+          { label: "+", fn: () => handleZoom(1.5) },
+          { label: "−", fn: () => handleZoom(1/1.5) },
+          { label: "↺", fn: handleReset, small: true },
+        ].map(({ label, fn, small }) => (
+          <button key={label} onClick={fn}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-all font-mono font-bold"
-            style={{ fontSize: small ? 10 : 16 }}
-          >
+            style={{ fontSize: small ? 10 : 16 }}>
             {label}
           </button>
         ))}
@@ -274,47 +216,29 @@ function GeoMap({ geojson, puntos, isLight, onPointClick, activeCluster, svgRef,
 }
 
 // ── Tarjeta de era ────────────────────────────────────────────────────────────
-function EraCard({ era, config, count, active, onToggle, isLight }) {
+function EraCard({ era, config, count, active, onToggle, isLight, am }) {
   return (
     <button
       onClick={onToggle}
-      style={{
-        borderColor: active ? config.border : isLight ? "#e5e0d8" : "#2a2520",
-        background: active ? config.bg : "transparent",
-      }}
+      style={{ borderColor: active ? config.border : isLight ? "#e5e0d8" : "#2a2520", background: active ? config.bg : "transparent" }}
       className="flex-1 flex flex-col items-start gap-1 px-2 py-2 sm:px-4 sm:py-3 rounded-xl border transition-all hover:scale-[1.02]"
     >
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
           <span style={{ background: config.color }} className="w-2 h-2 rounded-full shrink-0" />
-          <span
-            style={{ color: active ? config.color : isLight ? "#78716c" : "#6b5e4e" }}
-            className="font-mono text-[9px] sm:text-[11px] font-bold uppercase tracking-wide"
-          >
+          <span style={{ color: active ? config.color : isLight ? "#78716c" : "#6b5e4e" }} className="font-mono text-[9px] sm:text-[11px] font-bold uppercase tracking-wide">
             {config.label}
           </span>
         </div>
-        <span
-          style={{
-            background: active ? config.color : "transparent",
-            borderColor: active ? config.color : isLight ? "#d5cfc8" : "#3a3028",
-          }}
-          className="w-4 h-4 rounded border-2 flex items-center justify-center transition-all shrink-0"
-        >
+        <span style={{ background: active ? config.color : "transparent", borderColor: active ? config.color : isLight ? "#d5cfc8" : "#3a3028" }} className="w-4 h-4 rounded border-2 flex items-center justify-center transition-all shrink-0">
           {active && <span className="text-white font-bold" style={{ fontSize: 9, lineHeight: 1 }}>✓</span>}
         </span>
       </div>
-      <span
-        style={{ color: isLight ? "#a09080" : "#4a3f32" }}
-        className="hidden sm:block font-mono text-[9px] uppercase tracking-widest"
-      >
+      <span style={{ color: isLight ? "#a09080" : "#4a3f32" }} className="hidden sm:block font-mono text-[9px] uppercase tracking-widest">
         {config.ma}
       </span>
-      <span
-        style={{ color: active ? config.color : isLight ? "#a09080" : "#4a3f32" }}
-        className="font-mono text-[10px] font-bold"
-      >
-        {count} {count === 1 ? "especie" : "especies"}
+      <span style={{ color: active ? config.color : isLight ? "#a09080" : "#4a3f32" }} className="font-mono text-[10px] font-bold">
+        {count} {count === 1 ? (am.speciesSingular || "especie") : (am.speciesPlural || "especies")}
       </span>
     </button>
   );
@@ -323,42 +247,30 @@ function EraCard({ era, config, count, active, onToggle, isLight }) {
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function PaleoMap() {
   const { theme } = useUser();
+  const { tSection } = useTranslation();
+  const am = tSection("animalMap");
   const isLight = theme === "light";
   const svgRef  = useRef(null);
   const zoomRef = useRef(null);
   const mapRef  = useRef(null);
   const projRef = useRef(null);
 
-  const [geojson, setGeojson]           = useState(null);
-  const [loading, setLoading]           = useState(true);
-  const [activeCluster, setActiveCluster] = useState(null); // array de puntos | null
-  const [tipPos, setTipPos]             = useState({ x: 0, y: 0 });
+  const [geojson, setGeojson]             = useState(null);
+  const [loading, setLoading]             = useState(true);
+  const [activeCluster, setActiveCluster] = useState(null);
+  const [tipPos, setTipPos]               = useState({ x: 0, y: 0 });
+  const [activeEras, setActiveEras] = useState({ Paleozoico: true, Mesozoico: true, Cenozoico: true });
 
-  const [activeEras, setActiveEras] = useState({
-    Paleozoico: true,
-    Mesozoico:  true,
-    Cenozoico:  true,
-  });
-
-  // Construir todos los puntos con coordenadas
   const allHallazgos = React.useMemo(() => {
     const hallazgos = getHallazgosForAnimals(allAnimals);
     return hallazgos.map(h => {
       const animal = allAnimals.find(a => a.id === h.id);
       const eraGrupo = ERA_MAP[animal?.era] || "Cenozoico";
-      return {
-        ...h,
-        animal,
-        eraGrupo,
-        eraColor: ERA_CONFIG[eraGrupo]?.color || "#cf9a5a",
-      };
+      return { ...h, animal, eraGrupo, eraColor: ERA_CONFIG[eraGrupo]?.color || "#cf9a5a" };
     });
   }, []);
 
-  const puntosFiltrados = React.useMemo(() =>
-    allHallazgos.filter(p => activeEras[p.eraGrupo]),
-    [allHallazgos, activeEras]
-  );
+  const puntosFiltrados = React.useMemo(() => allHallazgos.filter(p => activeEras[p.eraGrupo]), [allHallazgos, activeEras]);
 
   const countByEra = React.useMemo(() => {
     const counts = { Paleozoico: 0, Mesozoico: 0, Cenozoico: 0 };
@@ -366,93 +278,39 @@ export default function PaleoMap() {
     return counts;
   }, [allHallazgos]);
 
-  useEffect(() => {
-    fetchWorld().then(d => { setGeojson(d); setLoading(false); });
-  }, []);
+  useEffect(() => { fetchWorld().then(d => { setGeojson(d); setLoading(false); }); }, []);
 
-  const toggleEra = (era) => {
-    setActiveEras(prev => ({ ...prev, [era]: !prev[era] }));
-    setActiveCluster(null);
-  };
+  const toggleEra = (era) => { setActiveEras(prev => ({ ...prev, [era]: !prev[era] })); setActiveCluster(null); };
 
-  // Radio de clustering en coordenadas SVG (antes del zoom)
-  // Se divide por el zoom actual para que el área de clustering sea
-  // siempre la misma en pantalla independientemente del nivel de zoom
   const CLUSTER_RADIUS_PX = 18;
 
   const handlePoint = (p, svgX, svgY, e) => {
     e.stopPropagation();
-
-    // Cerrar si se vuelve a clicar el mismo cluster
-    if (activeCluster && activeCluster.some(c => c.id === p.id)) {
-      setActiveCluster(null);
-      return;
-    }
-
+    if (activeCluster && activeCluster.some(c => c.id === p.id)) { setActiveCluster(null); return; }
     const proj = projRef.current;
-    if (!proj) {
-      setActiveCluster([p]);
-      setTipPos({ x: svgX + 14, y: svgY + 14 });
-      return;
-    }
-
-    // Obtener escala de zoom actual desde el atributo transform del <g>
+    if (!proj) { setActiveCluster([p]); setTipPos({ x: svgX + 14, y: svgY + 14 }); return; }
     const gEl = svgRef.current?.querySelector("g");
     let scale = 1;
-    if (gEl) {
-      const transform = gEl.getAttribute("transform") || "";
-      // d3 escribe "translate(x,y) scale(k)" — extraer k
-      const m = transform.match(/scale\(([\d.]+)\)/);
-      if (m) scale = parseFloat(m[1]);
-    }
-
-    // Radio efectivo en coordenadas SVG sin zoom
+    if (gEl) { const m = (gEl.getAttribute("transform") || "").match(/scale\(([\d.]+)\)/); if (m) scale = parseFloat(m[1]); }
     const effectiveRadius = CLUSTER_RADIUS_PX / scale;
-
-    // Buscar todos los puntos filtrados a ≤ effectiveRadius del punto clicado
-    const nearby = puntosFiltrados.filter(other => {
-      const oc = proj([other.lon, other.lat]);
-      if (!oc) return false;
-      return Math.hypot(oc[0] - svgX, oc[1] - svgY) <= effectiveRadius;
-    });
-
-    // Calcular posición del tooltip relativa al contenedor del mapa
+    const nearby = puntosFiltrados.filter(other => { const oc = proj([other.lon, other.lat]); if (!oc) return false; return Math.hypot(oc[0] - svgX, oc[1] - svgY) <= effectiveRadius; });
     const mapRect = mapRef.current?.getBoundingClientRect();
-    const mapW = mapRect?.width  || 900;
+    const mapW = mapRect?.width || 900;
     const mapH = mapRect?.height || 450;
-
-    // El SVG puede estar escalado (width 100%, height auto) — calcular factor
     const svgEl = svgRef.current;
     const svgRect = svgEl?.getBoundingClientRect();
     const svgNaturalW = svgEl?.getAttribute("width") || mapW;
     const displayScale = svgRect ? svgRect.width / svgNaturalW : 1;
-
-    // Posición del punto en coordenadas de pantalla relativas al mapa
-    // Necesitamos aplicar zoom + displayScale
     let screenX = svgX * displayScale * scale;
     let screenY = svgY * displayScale * scale;
-
-    // Aplicar la traslación del zoom
-    if (gEl) {
-      const transform = gEl.getAttribute("transform") || "";
-      const m = transform.match(/translate\(([\d.-]+)[, ]+([\d.-]+)\)/);
-      if (m) {
-        screenX += parseFloat(m[1]) * displayScale;
-        screenY += parseFloat(m[2]) * displayScale;
-      }
-    }
-
-    // Tooltip size estimado
+    if (gEl) { const m = (gEl.getAttribute("transform") || "").match(/translate\(([\d.-]+)[, ]+([\d.-]+)\)/); if (m) { screenX += parseFloat(m[1]) * displayScale; screenY += parseFloat(m[2]) * displayScale; } }
     const tipW = 210;
     const tipH = Math.min(60 + nearby.length * 52, 320);
-
-    let x = screenX + 14;
-    let y = screenY + 14;
+    let x = screenX + 14; let y = screenY + 14;
     if (x + tipW > mapW - 8) x = screenX - tipW - 8;
     if (x < 8) x = 8;
     if (y + tipH > mapH - 8) y = Math.max(8, screenY - tipH - 8);
     if (y < 8) y = 8;
-
     setTipPos({ x, y });
     setActiveCluster(nearby.length > 0 ? nearby : [p]);
   };
@@ -463,130 +321,75 @@ export default function PaleoMap() {
       {/* Tarjetas de era */}
       <div className={`px-5 py-4 border-b ${isLight ? "border-stone-200" : "border-[#2a2520]"}`}>
         <p className={`font-mono text-[9px] uppercase tracking-[0.2em] mb-3 ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
-          <span className="hidden sm:inline">Filtrar por era — </span>
-          {puntosFiltrados.length} de {allHallazgos.length} especies visibles
+          <span className="hidden sm:inline">{am.filterByEra || "Filtrar por era"} — </span>
+          {puntosFiltrados.length} {am.of || "de"} {allHallazgos.length} {am.speciesVisible || "especies visibles"}
         </p>
         <div className="grid grid-cols-3 sm:flex gap-2">
           {Object.entries(ERA_CONFIG).map(([era, config]) => (
-            <EraCard
-              key={era}
-              era={era}
-              config={config}
-              count={countByEra[era] || 0}
-              active={activeEras[era]}
-              onToggle={() => toggleEra(era)}
-              isLight={isLight}
-            />
+            <EraCard key={era} era={era} config={config} count={countByEra[era] || 0} active={activeEras[era]} onToggle={() => toggleEra(era)} isLight={isLight} am={am} />
           ))}
         </div>
       </div>
 
       {/* Mapa */}
-      <div
-        ref={mapRef}
-        className="relative"
-        onClick={() => setActiveCluster(null)}  // ← corregido: antes era setActiveAnimal(null)
-      >
+      <div ref={mapRef} className="relative" onClick={() => setActiveCluster(null)}>
         {loading && (
-          <div
-            className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 ${isLight ? "bg-stone-50" : "bg-[#0c0b0a]"}`}
-            style={{ minHeight: 300 }}
-          >
+          <div className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 ${isLight ? "bg-stone-50" : "bg-[#0c0b0a]"}`} style={{ minHeight: 300 }}>
             <Loader size={20} className="animate-spin text-amber-600" />
             <span className={`font-mono text-[10px] uppercase tracking-widest ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
-              Cargando mapa...
+              {am.loadingMap || "Cargando mapa..."}
             </span>
           </div>
         )}
 
-        <GeoMap
-          geojson={geojson}
-          puntos={puntosFiltrados}
-          isLight={isLight}
-          onPointClick={handlePoint}
-          activeCluster={activeCluster}
-          svgRef={svgRef}
-          zoomRef={zoomRef}
-          projRef={projRef}
-        />
+        <GeoMap geojson={geojson} puntos={puntosFiltrados} isLight={isLight} onPointClick={handlePoint} activeCluster={activeCluster} svgRef={svgRef} zoomRef={zoomRef} projRef={projRef} />
 
-        {/* Cluster Tooltip — desktop */}
         {activeCluster && activeCluster.length > 0 && (
-          <div
-            style={{ position: "absolute", top: tipPos.y, left: tipPos.x, zIndex: 20 }}
-            onClick={e => e.stopPropagation()}
-            className="hidden sm:block"
-          >
+          <div style={{ position: "absolute", top: tipPos.y, left: tipPos.x, zIndex: 20 }} onClick={e => e.stopPropagation()} className="hidden sm:block">
             {activeCluster.length === 1 ? (
-              <Tooltip
-                animal={activeCluster[0].animal}
-                eraColor={ERA_CONFIG[activeCluster[0].eraGrupo]?.color || "#cf9a5a"}
-                isLight={isLight}
-                onClose={() => setActiveCluster(null)}
-              />
+              <Tooltip animal={activeCluster[0].animal} eraColor={ERA_CONFIG[activeCluster[0].eraGrupo]?.color || "#cf9a5a"} isLight={isLight} onClose={() => setActiveCluster(null)} am={am} />
             ) : (
-              <ClusterTooltip
-                puntos={activeCluster}
-                isLight={isLight}
-                onClose={() => setActiveCluster(null)}
-              />
+              <ClusterTooltip puntos={activeCluster} isLight={isLight} onClose={() => setActiveCluster(null)} am={am} />
             )}
           </div>
         )}
 
-        {/* Badge info */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2.5 py-1.5 pointer-events-none">
           <span className="font-mono text-[10px] text-white/70">
-            {puntosFiltrados.length} hallazgos en el mapa
+            {puntosFiltrados.length} {am.findingsOnMap || "hallazgos en el mapa"}
           </span>
         </div>
       </div>
 
-      {/* Panel móvil — cluster */}
+      {/* Panel móvil */}
       {activeCluster && activeCluster.length > 0 && (
-        <div
-          className={`sm:hidden border-t ${isLight ? "border-stone-200 bg-stone-50" : "border-[#2a2520] bg-[#0c0b0a]"}`}
-          onClick={e => e.stopPropagation()}
-        >
+        <div className={`sm:hidden border-t ${isLight ? "border-stone-200 bg-stone-50" : "border-[#2a2520] bg-[#0c0b0a]"}`} onClick={e => e.stopPropagation()}>
           {activeCluster.map(p => {
             const animal = p.animal;
             const color = ERA_CONFIG[p.eraGrupo]?.color || "#cf9a5a";
             return (
-              <div
-                key={p.id}
-                className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-none ${isLight ? "border-stone-100" : "border-[#1a1816]"}`}
-              >
+              <div key={p.id} className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-none ${isLight ? "border-stone-100" : "border-[#1a1816]"}`}>
                 {animal?.imagen && (
-                  <div
-                    className="w-10 h-10 shrink-0 rounded-lg overflow-hidden border"
-                    style={{ borderColor: `${color}40` }}
-                  >
+                  <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden border" style={{ borderColor: `${color}40` }}>
                     <img src={animal.imagen} alt={animal.nombre} className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p style={{ color }} className="font-mono text-[10px] font-bold uppercase tracking-wide truncate">
-                    {animal?.nombre}
-                  </p>
-                  <p className={`font-mono text-[9px] truncate ${isLight ? "text-stone-400" : "text-[#6b5e4e]"}`}>
-                    {animal?.era}
-                  </p>
+                  <p style={{ color }} className="font-mono text-[10px] font-bold uppercase tracking-wide truncate">{animal?.nombre}</p>
+                  <p className={`font-mono text-[9px] truncate ${isLight ? "text-stone-400" : "text-[#6b5e4e]"}`}>{animal?.era}</p>
                 </div>
                 <button
                   onClick={() => { window.location.href = `/animal/${encodeURIComponent(animal.nombre.toLowerCase())}`; }}
                   style={{ borderColor: `${color}50`, color }}
                   className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-transparent hover:opacity-80 transition-all shrink-0"
                 >
-                  Ver →
+                  {am.viewRecord || "Ver"} →
                 </button>
               </div>
             );
           })}
           <div className="flex justify-end px-4 py-2">
-            <button
-              onClick={() => setActiveCluster(null)}
-              className={`w-6 h-6 flex items-center justify-center rounded-lg ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}
-            >
+            <button onClick={() => setActiveCluster(null)} className={`w-6 h-6 flex items-center justify-center rounded-lg ${isLight ? "text-stone-400" : "text-[#4a3f32]"}`}>
               <X size={13} />
             </button>
           </div>

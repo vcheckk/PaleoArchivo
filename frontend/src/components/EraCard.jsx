@@ -1,13 +1,20 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/useUser';
+import useTranslatedSubName from '../hooks/useTranslatedSubName';
 
 const EraCard = ({ name, age, image, children, id }) => {
   const navigate = useNavigate();
-  const { theme } = useUser();
+  const { theme, language } = useUser();
   const isLight = theme === 'light';
 
-  const bgCard    = isLight ? '#ffffff'  : '#1a1816';
+  const { translated: nameTraducido } = useTranslatedSubName(name, language);
+  const { translated: childrenTraducido } = useTranslatedSubName(
+    typeof children === 'string' ? children : null,
+    language
+  );
+
+  const bgCard        = isLight ? '#ffffff'  : '#1a1816';
   const textPrimary   = isLight ? '#1c1917'  : '#fef3c7';
   const textSecondary = isLight ? '#57534e'  : '#a8a29e';
 
@@ -39,7 +46,7 @@ const EraCard = ({ name, age, image, children, id }) => {
             className="text-4xl font-black font-mono tracking-tighter leading-none group-hover:text-amber-600 transition-colors uppercase italic"
             style={{ color: textPrimary }}
           >
-            {name}
+            {nameTraducido}
           </h3>
           <p
             className="font-black text-amber-600 text-[15px] font-mono tracking-tighter uppercase italic leading-none break-words transition-colors"
@@ -52,7 +59,7 @@ const EraCard = ({ name, age, image, children, id }) => {
         <div className="h-px w-full bg-amber-500/20 mb-5" />
 
         <div className="text-sm leading-relaxed font-light italic" style={{ color: textSecondary }}>
-          {children}
+          {childrenTraducido || children}
         </div>
       </div>
 

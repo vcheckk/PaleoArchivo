@@ -1,13 +1,13 @@
 // Páginas generales
-export { default as LandingPage }       from './LandingPage';
-export { default as DinoDetailPage }    from './DinoDetailPage';
-export { default as FavoritesPage }     from './FavoritesPage';
-export { default as ProfilePage }       from './ProfilePage';
-export { default as ArchivoPage }       from './ArchivoPage';
+export { default as LandingPage }     from './LandingPage';
+export { default as DinoDetailPage }  from './DinoDetailPage';
+export { default as FavoritesPage }   from './FavoritesPage';
+export { default as ProfilePage }     from './ProfilePage';
+export { default as ArchivoPage }     from './ArchivoPage';
+export { default as ComparadorPage }  from './ComparadorPage';
+export { default as PaleoMapPage }  from './PaleoMapPage';
+export { default as SugerirPage }  from './SugerirPage';
 export { default as TopFavoritosPage }  from './TopFavoritosPage';
-export { default as PaleoMapPage }      from './PaleoMapPage';
-export { default as ComparadorPage }    from './ComparadorPage';
-export { default as SugerirPage }       from './SugerirPage';
 
 // ── PALEOZOICO ──────────────────────────────────────────────────────────────
 export { default as PaleozoicoPage }  from './PaleozoicoPage';

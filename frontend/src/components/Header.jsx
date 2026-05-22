@@ -10,7 +10,7 @@ import { allAnimals } from "../data/allData";
 import { useUser } from "../context/useUser";
 import { useFavorites } from "../context/FavoritesContext";
 import { useTimeline } from "../hooks/useTimeline";
-import { translations } from "../data/translations";
+import { useTranslation } from "../hooks/useTranslation";
 
 const ROUTE_SUBTITLES = {
   "/era/paleozoico": "Paleozoico",
@@ -43,6 +43,7 @@ const Header = () => {
   const { theme, toggleTheme, language } = useUser();
   const { clearFavorites } = useFavorites();
   const { openTimeline } = useTimeline();
+  const { tSection } = useTranslation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState("");
   const [avatar, setAvatar] = useState("");
@@ -51,7 +52,7 @@ const Header = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const t = translations[language].header;
+  const t = tSection("header");
   const isLight = theme === "light";
   const iconColor = isLight ? "text-blue-500" : "text-amber-500";
 
@@ -71,9 +72,10 @@ const Header = () => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target))
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
         setIsMenuOpen(false);
         setIsDrawerOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -107,17 +109,14 @@ const Header = () => {
     return ROUTE_SUBTITLES[location.pathname] || t.subtitleDefault;
   };
 
-  // Etiqueta del botón cronología según idioma
-  const timelineLabel =
-    t.cronologia ??
-    ({ es: "Cronología", en: "Timeline", fr: "Chronologie", it: "Cronologia" }[language] ?? "Cronología");
+  const timelineLabel = t.cronologia || "Cronología";
 
   return (
     <>
       <header className="bg-[#1a1614] border-b border-[#d97706] sticky top-0 z-[50]">
         <div className="max-w-[1920px] mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-2">
 
-          {/* Logo — siempre a la izquierda */}
+          {/* Logo */}
           <div className="flex items-center gap-2">
             <Link to="/" className="group flex items-center gap-3 shrink-0">
               <img src={paleoLogo} alt="Logo"
@@ -136,7 +135,7 @@ const Header = () => {
               </div>
             </Link>
 
-            {/* ── Botón hamburguesa — justo a la derecha del logo, solo móvil ── */}
+            {/* Botón hamburguesa */}
             <button
               onClick={() => setIsDrawerOpen(v => !v)}
               className={`lg:hidden flex items-center justify-center w-9 h-9 rounded-xl border-2 transition-all shrink-0 ml-1
@@ -148,18 +147,20 @@ const Header = () => {
 
           <div className="flex items-center gap-2">
 
-            {/* ── Botón Comparador ── */}
+            {/* Botón Comparador */}
             <button
               onClick={() => navigate("/comparador")}
-              aria-label="Comparador"
+              aria-label={t.comparator || "Comparador"}
               className={`hidden md:flex items-center gap-2 border-2 px-3 py-2 md:px-5 md:py-3 rounded-xl md:rounded-lg transition-all
                 ${isLight ? "bg-white border-stone-200 hover:border-stone-400" : "bg-black/40 border-white/10 hover:border-white/25"}`}
             >
               <Scale size={18} className={`${iconColor} md:w-6 md:h-6`} />
-              <span className={`hidden md:inline font-mono text-[10px] uppercase tracking-widest font-bold ${iconColor}`}>Comparar</span>
+              <span className={`hidden md:inline font-mono text-[10px] uppercase tracking-widest font-bold ${iconColor}`}>
+                {t.compare || "Comparar"}
+              </span>
             </button>
 
-            {/* ── Botón Cronología ── */}
+            {/* Botón Cronología */}
             <button
               onClick={openTimeline}
               aria-label={timelineLabel}
@@ -167,7 +168,9 @@ const Header = () => {
                 ${isLight ? "bg-white border-stone-200 hover:border-stone-400" : "bg-black/40 border-white/10 hover:border-white/25"}`}
             >
               <Clock size={18} className={`${iconColor} md:w-6 md:h-6`} />
-              <span className={`hidden md:inline font-mono text-[10px] uppercase tracking-widest font-bold ${iconColor}`}>{timelineLabel}</span>
+              <span className={`hidden md:inline font-mono text-[10px] uppercase tracking-widest font-bold ${iconColor}`}>
+                {timelineLabel}
+              </span>
             </button>
 
             {/* Botón tema */}
@@ -181,8 +184,6 @@ const Header = () => {
 
             {isLoggedIn ? (
               <div className="relative" ref={menuRef}>
-
-                {/* ── Botón usuario: avatar + nombre + chevron ── */}
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   className="flex items-center gap-3 group"
@@ -202,7 +203,6 @@ const Header = () => {
                   <ChevronDown size={18} className={`hidden md:block ${iconColor} opacity-50 transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
                 </button>
 
-                {/* Menú desplegable */}
                 {isMenuOpen && (
                   <div className={`absolute top-full right-0 mt-3 w-60 border rounded-xl shadow-2xl z-[1000] overflow-hidden
                     ${isLight ? "bg-white border-stone-200 text-stone-900" : "bg-[#1a1614] border-white/10 text-white"}`}>
@@ -220,7 +220,7 @@ const Header = () => {
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
                           ${isLight ? "hover:bg-blue-500/10 text-stone-700" : "hover:bg-white/5 text-stone-300"}`}>
                         <User size={15} className={iconColor} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Mi perfil</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t.myProfile || t.profile}</span>
                       </Link>
                       <div className={`h-px mx-2 my-1 ${isLight ? "bg-stone-100" : "bg-white/5"}`} />
                       <button onClick={() => { setIsMenuOpen(false); setShowConfirm(true); }}
@@ -269,7 +269,7 @@ const Header = () => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={handleLogoutConfirm}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl uppercase tracking-widest text-xs">
-                  {t.confirm || "SÍ, SALIR"}
+                  {t.confirm || "Confirmar"}
                 </button>
                 <button onClick={() => setShowConfirm(false)}
                   className={`flex-1 font-black py-4 rounded-xl uppercase tracking-widest text-xs
@@ -282,13 +282,13 @@ const Header = () => {
         </div>
       )}
 
-      {/* ── Overlay ── */}
+      {/* Overlay drawer */}
       {isDrawerOpen && (
         <div className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
           onClick={() => setIsDrawerOpen(false)} />
       )}
 
-      {/* ── Drawer deslizante ── */}
+      {/* Drawer */}
       <div className={`lg:hidden fixed top-0 left-0 h-full w-72 z-[70] flex flex-col transition-transform duration-300 ease-in-out
         ${isDrawerOpen ? "translate-x-0" : "-translate-x-full"}
         ${isLight ? "bg-[#f0ebe3] border-r border-stone-200" : "bg-[#0f0e0c] border-r border-[#2a2520]"}`}>
@@ -308,11 +308,11 @@ const Header = () => {
 
         <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
           {[
-            { to: "/archivo",       emoji: "🗂️", label: "Archivo completo" },
-            { to: "/mapa",          emoji: "🌍", label: "Paleogeografía"   },
-            { to: "/top-favoritos", emoji: "🏆", label: "Top Favoritos"    },
-            { to: "/comparador",    emoji: "⚖️",  label: "Comparador"      },
-            { to: "/sugerir",       emoji: "💡", label: "Sugerir especie"  },
+            { to: "/archivo",       emoji: "🗂️", label: t.fullArchive    || "Archivo completo" },
+            { to: "/mapa",          emoji: "🌍", label: t.paleogeography || "Paleogeografía"   },
+            { to: "/top-favoritos", emoji: "🏆", label: t.topFavorites   || "Top Favoritos"    },
+            { to: "/comparador",    emoji: "⚖️",  label: t.comparator    || "Comparador"       },
+            { to: "/sugerir",       emoji: "💡", label: t.suggestSpecies || "Sugerir especie"  },
           ].map(({ to, emoji, label }) => (
             <Link key={to} to={to} onClick={() => setIsDrawerOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-mono text-[11px] uppercase tracking-wide font-bold
@@ -328,12 +328,12 @@ const Header = () => {
             }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left transition-all font-mono text-[11px] uppercase tracking-wide font-bold
               ${isLight ? "text-stone-600 hover:bg-amber-50 hover:text-amber-700" : "text-[#c8b89a] hover:bg-amber-600/10 hover:text-amber-500"}`}>
-            <span className="text-base w-5 text-center">🎲</span>Animal sorpresa
+            <span className="text-base w-5 text-center">🎲</span>{t.randomAnimal || "Animal sorpresa"}
           </button>
           <button onClick={() => { openTimeline(); setIsDrawerOpen(false); }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left transition-all font-mono text-[11px] uppercase tracking-wide font-bold
               ${isLight ? "text-stone-600 hover:bg-amber-50 hover:text-amber-700" : "text-[#c8b89a] hover:bg-amber-600/10 hover:text-amber-500"}`}>
-            <Clock size={15} className="shrink-0" />Cronología
+            <Clock size={15} className="shrink-0" />{timelineLabel}
           </button>
           <div className={`my-2 h-px ${isLight ? "bg-stone-200" : "bg-[#2a2520]"}`} />
           {[
@@ -354,7 +354,7 @@ const Header = () => {
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl w-full transition-all font-mono text-[11px] uppercase tracking-wide font-bold
               ${isLight ? "text-stone-600 hover:bg-amber-50" : "text-[#c8b89a] hover:bg-amber-600/10"}`}>
             {isLight ? <Moon size={15} /> : <Sun size={15} />}
-            {isLight ? "Modo oscuro" : "Modo claro"}
+            {isLight ? (t.darkMode || "Modo oscuro") : (t.lightMode || "Modo claro")}
           </button>
         </div>
       </div>

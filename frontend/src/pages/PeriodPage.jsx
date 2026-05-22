@@ -2,20 +2,17 @@
 import React from 'react';
 import { useUser } from '../context/useUser';
 import { useTranslation } from '../hooks/useTranslation';
+import useTranslatedSubName from '../hooks/useTranslatedSubName';
 import DinoCard from '../components/DinoCard';
 import { motion } from 'framer-motion';
 
-/**
- * @param {Array}  data         - Array de animales del período
- * @param {string} title        - Adjetivo del título, e.g. "Cámbricos", "Jurásicos"
- * @param {string} accentColor  - Clase Tailwind para el color de acento
- * @param {string} accentHex    - Color hex para la línea decorativa
- */
 const PeriodPage = ({ data = [], title = "", accentColor = "text-amber-600", accentHex = "#d97706" }) => {
-  const { theme } = useUser();
+  const { theme, language } = useUser();
   const { tSection } = useTranslation();
   const ep = tSection('eraPage');
   const isLight = theme === 'light';
+
+  const { translated: titleTraducido } = useTranslatedSubName(title, language);
 
   return (
     <motion.div
@@ -38,11 +35,14 @@ const PeriodPage = ({ data = [], title = "", accentColor = "text-amber-600", acc
         </button>
 
         <h1 className={`text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none transition-colors ${isLight ? 'text-stone-900' : 'text-white'}`}>
-          {ep.recordsOf} <span className={`font-black ${accentColor}`}>{title}</span>
+          {language === 'es' || language === 'fr' || language === 'it'
+            ? <>{ep.recordsOf} <span className={`font-black ${accentColor}`}>{titleTraducido}</span></>
+            : <><span className={`font-black ${accentColor}`}>{titleTraducido}</span> {ep.recordsOf}</>
+          }
         </h1>
 
-        <div className="flex items-center gap-4 mt-4 mb-12">
-          <div className="h-0.5 w-12" style={{ backgroundColor: accentHex }} />
+        <div className="flex items-center gap-4 mt-4">
+          <div className="h-0.5 w-12" style={{ backgroundColor: accentHex }}></div>
           <p className={`font-mono text-xs uppercase tracking-[0.2em] transition-colors ${isLight ? 'text-stone-500' : 'text-slate-500'}`}>
             // {ep.classifiedAnimals}: {data.length} ({ep.wip})
           </p>

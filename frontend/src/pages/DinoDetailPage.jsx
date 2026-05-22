@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { getDietConfig, getDietLabel } from "../data/dietConfig";
 import useTranslatedDescription from "../hooks/useTranslatedDescription";
+import useTranslatedSubName from "../hooks/useTranslatedSubName";
 import AnimalMap from "../components/AnimalMap";
 import AnimalNotes from "../components/AnimalNotes";
 
@@ -58,7 +59,7 @@ const Sparkles = ({ isFav, fill }) => {
 };
 
 // ── Papers científicos ────────────────────────────────────────────────────
-const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
+const PapersSection = ({ nombreAnimal, hex, isLight, language, dd }) => {
   const [papers, setPapers]               = useState([]);
   const [loading, setLoading]             = useState(false);
   const [expanded, setExpanded]           = useState(false);
@@ -70,10 +71,10 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
   const isLoggedIn = localStorage.getItem("auth") === "true";
 
   const labels = {
-    es: { title: "Literatura Científica", loading: "Buscando...", empty: "No se encontraron publicaciones indexadas.", scholar: "Ver en Google Scholar", authors: "et al.", noAuthors: "Autor desconocido", btn: "Literatura científica", lockedTitle: "Acceso restringido", lockedMsg: "Inicia sesión para acceder a la literatura científica indexada.", lockedBtn: "Entendido", showVerb: "mostrar", showMore: "más" },
-    en: { title: "Scientific Literature",    loading: "Searching...", empty: "No indexed publications found.",             scholar: "View on Google Scholar",  authors: "et al.", noAuthors: "Unknown author",    btn: "Scientific literature",  lockedTitle: "Restricted access",  lockedMsg: "Log in to access indexed scientific literature.",                    lockedBtn: "Got it",   showVerb: "show",     showMore: "more"      },
-    fr: { title: "Littérature Scientifique", loading: "Recherche...", empty: "Aucune publication indexée trouvée.",         scholar: "Voir sur Google Scholar",  authors: "et al.", noAuthors: "Auteur inconnu",    btn: "Littérature scientifique", lockedTitle: "Accès restreint",    lockedMsg: "Connectez-vous pour accéder à la littérature scientifique indexée.", lockedBtn: "Compris",  showVerb: "afficher", showMore: "de plus"   },
-    it: { title: "Letteratura Scientifica",  loading: "Ricerca...",   empty: "Nessuna pubblicazione indicizzata trovata.", scholar: "Vedi su Google Scholar",   authors: "et al.", noAuthors: "Autore sconosciuto", btn: "Letteratura scientifica",  lockedTitle: "Accesso limitato",   lockedMsg: "Accedi per visualizzare la letteratura scientifica indicizzata.",    lockedBtn: "Capito",  showVerb: "mostra",   showMore: "in più"   },
+    es: { title: "Literatura Científica", loading: "Buscando...", empty: "No se encontraron publicaciones indexadas.", scholar: "Ver en Google Scholar", authors: "et al.", noAuthors: "Autor desconocido", btn: "Literatura científica", lockedTitle: "Acceso restringido", lockedMsg: "Inicia sesión para acceder a la literatura científica indexada.", lockedBtn: "Entendido", showVerb: "mostrar", showMore: "más", citations: "citas" },
+    en: { title: "Scientific Literature",    loading: "Searching...", empty: "No indexed publications found.",             scholar: "View on Google Scholar",  authors: "et al.", noAuthors: "Unknown author",    btn: "Scientific literature",  lockedTitle: "Restricted access",  lockedMsg: "Log in to access indexed scientific literature.",                    lockedBtn: "Got it",   showVerb: "show",     showMore: "more",    citations: "citations" },
+    fr: { title: "Littérature Scientifique", loading: "Recherche...", empty: "Aucune publication indexée trouvée.",         scholar: "Voir sur Google Scholar",  authors: "et al.", noAuthors: "Auteur inconnu",    btn: "Littérature scientifique", lockedTitle: "Accès restreint",    lockedMsg: "Connectez-vous pour accéder à la littérature scientifique indexée.", lockedBtn: "Compris",  showVerb: "afficher", showMore: "de plus", citations: "citations" },
+    it: { title: "Letteratura Scientifica",  loading: "Ricerca...",   empty: "Nessuna pubblicazione indicizzata trovata.", scholar: "Vedi su Google Scholar",   authors: "et al.", noAuthors: "Autore sconosciuto", btn: "Letteratura scientifica",  lockedTitle: "Accesso limitato",   lockedMsg: "Accedi per visualizzare la letteratura scientifica indicizzata.",    lockedBtn: "Capito",  showVerb: "mostra",   showMore: "in più",  citations: "citazioni" },
   };
   const l = labels[language] || labels.es;
 
@@ -97,7 +98,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
     const SPAM_FIELDS  = ["marketing", "machine learning", "deep learning", "neural network", "covid", "cancer", "drug", "clinical", "patient", "hospital", "nursing", "surgery", "cryptocurrency", "blockchain", "social media", "twitter", "facebook", "e-commerce", "supply chain", "algorithm", "cloud computing"];
 
     const parseWork = work => ({
-      title:        work.title || "Sin título",
+      title:        work.title || dd.noTitle || "Sin título",
       year:         work.publication_year || null,
       authors:      work.authorships?.slice(0, 3).map(a => a.author?.display_name).filter(Boolean) || [],
       totalAuthors: work.authorships?.length || 0,
@@ -175,7 +176,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
                   <Link to="/login" onClick={() => setShowLoginModal(false)}
                     className="px-5 py-2.5 rounded-xl border-2 font-black text-[11px] uppercase tracking-widest transition-all hover:opacity-80"
                     style={{ borderColor: hex, color: hex }}>
-                    Login
+                    {dd.loginToAccess || "Login"}
                   </Link>
                 </div>
               </div>
@@ -213,9 +214,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
             <div className="mt-4">
               <div className="flex items-center justify-between mb-3">
                 <p className={`text-[10px] font-mono uppercase tracking-widest ${isLight ? "text-stone-400" : "text-stone-600"}`}>
-                  {language === "es" ? "😅 Solo disponible en inglés, lo sentimos." :
-                   language === "fr" ? "😅 Disponible en anglais uniquement, désolé." :
-                   language === "it" ? "😅 Disponibile solo in inglese, ci dispiace." : ""}
+                  {language !== "en" ? (dd.literatureEnglishOnly || "😅 Solo disponible en inglés, lo sentimos.") : ""}
                 </p>
                 <a href={scholarUrl} target="_blank" rel="noopener noreferrer"
                   className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors
@@ -257,7 +256,7 @@ const PapersSection = ({ nombreAnimal, hex, isLight, language }) => {
                         </>}
                         {paper.cited > 0 && <>
                           <span className={`text-[10px] ${isLight ? "text-stone-300" : "text-stone-700"}`}>·</span>
-                          <span className={`text-[10px] font-mono ${isLight ? "text-stone-400" : "text-stone-600"}`}>{paper.cited} citas</span>
+                          <span className={`text-[10px] font-mono ${isLight ? "text-stone-400" : "text-stone-600"}`}>{paper.cited} {l.citations}</span>
                         </>}
                         <ExternalLink size={10}
                           className={`ml-auto shrink-0 opacity-0 group-hover:opacity-60 transition-opacity ${isLight ? "text-stone-500" : "text-stone-500"}`} />
@@ -297,13 +296,10 @@ const DinoDetailPage = () => {
   const isLight = colorTheme === "light";
   const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
 
-  // Scroll al inicio al cambiar de animal
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
-  // dino se define aquí — ANTES de cualquier useEffect que lo use
   const dino = allAnimals.find(d => d.nombre.toLowerCase() === decodeURIComponent(id).toLowerCase());
 
-  // Registrar visita en el historial (silencioso, solo si hay sesión)
   useEffect(() => {
     const userId = localStorage.getItem("userId");
     if (!userId || !dino) return;
@@ -315,6 +311,8 @@ const DinoDetailPage = () => {
   }, [dino?.id]);
 
   const { translated: descripcionTraducida, loading: loadingDesc } = useTranslatedDescription(dino?.descripcion ?? null, language);
+  const { translated: subNameTraducido } = useTranslatedSubName(dino?.subName ?? null, language);
+  const { translated: eraTraducida } = useTranslatedSubName(dino?.era ?? null, language);
   const isFav = dino ? isFavorite(dino.id) : false;
   const theme = useMemo(() => getDietConfig(dino?.dieta), [dino]);
   const hex = theme.fill;
@@ -375,7 +373,7 @@ const DinoDetailPage = () => {
 
   const extraFields = [
     { label: dd.type, value: typeLabels[dino.tipo] || dino.tipo },
-    { label: dd.era,  value: dino.era },
+    { label: dd.era,  value: eraTraducida },
   ].filter(f => f.value);
 
   return (
@@ -424,7 +422,7 @@ const DinoDetailPage = () => {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="h-px w-8 shrink-0" style={{ backgroundColor: hex }} />
                   <span className="font-mono text-[14px] uppercase tracking-[0.3em] truncate" style={{ color: hex }}>
-                    {dino.subName}
+                    {subNameTraducido}
                   </span>
                 </div>
                 <div className="flex lg:hidden items-center gap-1.5 shrink-0">
@@ -459,8 +457,8 @@ const DinoDetailPage = () => {
               {[
                 { label: dd.length, value: dino.longitud, icon: <Ruler size={11} />,            accentHex: "#78716c" },
                 { label: dd.height, value: dino.altura,   icon: <ArrowsUpFromLine size={11} />, accentHex: "#78716c" },
-                { label: dd.diet,   value: dino.dieta,    icon: <Utensils size={11} />,          accentHex: hex, textColor: theme.text },
-                { label: dd.status, value: dino.estado || dd.extinct, icon: <Skull size={11} />,
+                { label: dd.diet,   value: getDietLabel(dino.dieta, language).toUpperCase(), icon: <Utensils size={11} />, accentHex: hex, textColor: theme.color.text },
+                { label: dd.status, value: (dino.estado === "VIVO" ? (dd.alive || "VIVO") : (dd.extinct || "EXTINTO")).toUpperCase(), icon: <Skull size={11} />,
                   accentHex: dino.estado === "VIVO" ? "#22d3ee" : "#ef4444",
                   textColor: dino.estado === "VIVO" ? "text-cyan-400" : "text-red-400" },
               ].map(({ label, value, icon, accentHex, textColor }) => (
@@ -550,7 +548,7 @@ const DinoDetailPage = () => {
               style={{ borderColor: `${hex}40`, color: hex }}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border font-mono text-[10px] uppercase tracking-widest hover:opacity-80 transition-all"
             >
-              <Scale size={13} /> Comparar con otra especie
+              <Scale size={13} /> {dd.compareWith || "Comparar con otra especie"}
             </button>
           </div>
         </div>
@@ -602,7 +600,7 @@ const DinoDetailPage = () => {
         )}
 
         {/* LITERATURA CIENTÍFICA */}
-        <PapersSection key={dino.nombre} nombreAnimal={dino.nombre} hex={hex} isLight={isLight} language={language} />
+        <PapersSection key={dino.nombre} nombreAnimal={dino.nombre} hex={hex} isLight={isLight} language={language} dd={dd} />
 
         {/* ESPECIES RELACIONADAS */}
         {recommendations.length > 0 && (

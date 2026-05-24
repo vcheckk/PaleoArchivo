@@ -204,7 +204,7 @@ const Header = () => {
                 </button>
 
                 {isMenuOpen && (
-                  <div className={`absolute top-full right-0 mt-3 w-60 border rounded-xl shadow-2xl z-[1000] overflow-hidden
+                  <div className={`absolute top-full right-0 mt-3 w-60 border rounded-xl z-[1000] overflow-hidden
                     ${isLight ? "bg-white border-stone-200 text-stone-900" : "bg-[#1a1614] border-white/10 text-white"}`}>
                     <div className="px-4 py-3 border-b border-white/5 bg-amber-600/5">
                       <p className="text-[9px] font-black text-amber-500 uppercase tracking-[0.25em]">{username}</p>

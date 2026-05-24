@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
+const { checkAchievements } = require('./achievements');
 
 // --- REGISTRO ---
 router.post('/register', async (req, res) => {
@@ -186,7 +187,8 @@ router.post('/favorites/add', authMiddleware, async (req, res) => {
     }
 
     await user.save();
-    res.json(user.favorites);
+    const newAchievements = await checkAchievements(user);
+    res.json({ favorites: user.favorites, newAchievements });
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: 'Error de servidor' });
@@ -206,6 +208,32 @@ router.get('/top-favorites', async (req, res) => {
       { $project: { _id: 0, id: "$_id", nombre: 1, count: 1 } }
     ]);
     res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Error de servidor' });
+  }
+});
+
+
+// --- HISTORIAL ---
+router.post('/history/add', authMiddleware, async (req, res) => {
+  const { userId, animalId, animalNombre, animalEra } = req.body;
+  if (req.user.id !== userId) return res.status(403).json({ msg: 'No tienes permiso' });
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+
+    // Evitar duplicados consecutivos del mismo animal
+    const last = user.history[user.history.length - 1];
+    if (!last || last.animalId !== String(animalId)) {
+      user.history.push({ animalId: String(animalId), animalNombre: animalNombre || "", animalEra: animalEra || "", visitedAt: new Date() });
+      // Mantener máximo 50
+      if (user.history.length > 50) user.history = user.history.slice(-50);
+      await user.save();
+    }
+
+    const newAchievements = await checkAchievements(user);
+    res.json({ history: user.history, newAchievements });
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: 'Error de servidor' });

@@ -66,7 +66,7 @@ export const dinosaurios = [
     metodo: "Permineralización",
     material: "Arenisca de Beaufort",
     extincion: "240 m.a.",
-    imagen: "https://www.elpulgardelpanda.com/wp-content/uploads/2020/05/Portada-Victor-O.-Leshyk-702x526.jpg",
+    imagen: "https://imgur.com/WbRK52n.png",
     descripcion: "El animal que sobrevivió al mayor apocalipsis de la historia de la Tierra: la extinción masiva del Pérmico-Triásico, que eliminó el 96% de las especies marinas y el 70% de las terrestres. Tras la catástrofe, representaba hasta el 95% de los vertebrados terrestres del planeta.",
   },
   {

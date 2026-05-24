@@ -34,6 +34,31 @@ const userSchema = new mongoose.Schema({
       nombre: { type: String, required: true }
     }
   ],
+  history: [
+    {
+      _id: false,
+      animalId: { type: String, required: true },
+      animalNombre: { type: String, default: "" },
+      animalEra: { type: String, default: "" },
+      visitedAt: { type: Date, default: Date.now }
+    }
+  ],
+  notes: [
+    {
+      _id: false,
+      animalId: { type: String, required: true },
+      animalNombre: { type: String, default: "" },
+      text: { type: String, default: "" },
+      updatedAt: { type: Date, default: Date.now }
+    }
+  ],
+  achievements: [
+    {
+      _id: false,
+      id: { type: String, required: true },
+      unlockedAt: { type: Date, default: Date.now }
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now

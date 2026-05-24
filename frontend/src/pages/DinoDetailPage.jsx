@@ -307,6 +307,7 @@ const DinoDetailPage = () => {
       userId,
       animalId: String(dino.id),
       animalNombre: dino.nombre,
+      animalEra: dino.era || "",
     }).catch(() => {});
   }, [dino?.id]);
 
@@ -343,7 +344,7 @@ const DinoDetailPage = () => {
     if (!userId) { setToast({ show: true, msg: dd.authRequired, type: "error" }); return; }
     try {
       const response = await apiClient.post("/favorites/add", { userId, dinoId: dino.id, nombre: dino.nombre });
-      if (setFavorites) setFavorites(response.data.map(fav => String(fav.id)));
+      if (setFavorites) setFavorites((response.data.favorites || response.data).map(fav => String(fav.id)));
       setToast({ show: true, msg: isFav ? dd.removedFav : dd.addedFav, type: "success" });
     } catch {
       setToast({ show: true, msg: dd.connectionError, type: "error" });
